@@ -84,6 +84,17 @@ npm run dist:win   # NSIS installer + portable .exe in dist/
 
 Run this on Windows. Building the Windows target from Linux or macOS needs Wine. The GitHub Actions workflow (`.github/workflows/build.yml`) builds both installers on a Windows runner and uploads them as the `windows-installers` artifact.
 
+### Publishing a release
+
+Pushing a version tag builds the installers and publishes them as a GitHub Release. Bump `version` in `package.json` first so the file names match.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Players can always get the newest version from `https://github.com/endymion99-glitch/yugioh-app/releases/latest`.
+
 The builds are self-contained:
 
 - better-sqlite3 ships Node-API prebuilt binaries, so there's no native compile step.

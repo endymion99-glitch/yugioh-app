@@ -40,10 +40,10 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  artifactName: ${productName}-Setup-${version}.${ext}
+  artifactName: YGO-Collection-Manager-Setup-${version}.${ext}
   deleteAppDataOnUninstall: false
 portable:
-  artifactName: ${productName}-Portable-${version}.${ext}
+  artifactName: YGO-Collection-Manager-Portable-${version}.${ext}
 mac:
   target: dmg
   files:
