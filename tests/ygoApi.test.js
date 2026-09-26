@@ -9,7 +9,9 @@ const DB = [
   { id: 46986414, name: 'Dark Magician', type: 'Normal Monster', alts: [] },
   { id: 38033121, name: 'Dark Magician Girl', type: 'Effect Monster', alts: [] },
   { id: 27548199, name: 'Borreload Dragon', type: 'Link Monster', alts: [] },
-  { id: 55144522, name: 'Pot of Greed', type: 'Spell Card', alts: [] }
+  { id: 55144522, name: 'Pot of Greed', type: 'Spell Card', alts: [] },
+  { id: 29172562, name: 'Steel Ogre Grotto #1', type: 'Normal Monster', alts: [] },
+  { id: 90908427, name: 'Steel Ogre Grotto #2', type: 'Normal Monster', alts: [] }
 ]
 
 const toApi = (c) => ({
@@ -73,6 +75,14 @@ describe('YgoApi', () => {
     expect((await api.matchName('Dark Maglcian Girl')).card.id).toBe(38033121)
     expect((await api.matchName('Blue-Eyes White Dr...')).card.id).toBe(89631139)
     expect(await api.matchName('Qwxyz Zzzz')).toBeNull()
+  })
+
+  it('uses the hint to choose between cards a truncated name fits equally', async () => {
+    const text = 'Steel Ogre Grot...'
+    expect((await api.matchName(text, { hint: 'Steel 0gre Grotto #2' })).card.name).toBe('Steel Ogre Grotto #2')
+    expect((await api.matchName(text, { hint: 'Steel Ogre Grotto c1' })).card.name).toBe('Steel Ogre Grotto #1')
+    // A hint never overrides a clearly better match.
+    expect((await api.matchName('Dark Magician', { hint: 'Dark Magician Girl' })).card.name).toBe('Dark Magician')
   })
 
   it('search merges cache and API results, ranked', async () => {

@@ -134,7 +134,12 @@ export function registerIpc(db) {
 
   handle('import:ocr', async (event, payload) => {
     const images = payload?.cards
-      ? payload.cards.flatMap((c) => [c.name, c.nameAlt, ...(c.qtyGlyphs || [])])
+      ? payload.cards.flatMap((c) => [
+          c.name,
+          c.nameAlt,
+          ...(c.boxName ? [c.boxName, c.boxNameAlt] : []),
+          ...(c.qtyGlyphs || [])
+        ])
       : [payload?.full]
     if (!images.length || !images.every((b) => b instanceof Uint8Array && b.byteLength > 0)) {
       throw new UserError('No image received.')

@@ -55,7 +55,7 @@ The database is `ygo-collection.sqlite` in Electron's `userData` folder (on Wind
 ### How screenshot OCR works
 
 1. The renderer finds card rectangles by separating the cards from the plain background (`src/shared/cardGrid.js`).
-2. For each card, it crops the name strip at the top and prepares a dark-on-white version plus its inverse, so it doesn't matter whether the name is printed dark or light.
+2. For each card, it crops the name caption that YGOprodeck prints under the card. If there's no caption, it uses the name box at the top of the card instead. The crop is prepared as a dark-on-white version plus its inverse, so it doesn't matter whether the name is printed dark or light. When a caption is cut off ("Steel Ogre Grot..."), the card's own name box is also read and used to pick between cards whose names start the same way.
 3. It looks for large glyphs in the card's bottom-right corner with an adaptive threshold and connected components (`src/shared/glyphs.js`). Each candidate is rendered as a clean mask image for the quantity overlay.
 4. The main process runs Tesseract on those small images and matches the names to real cards with fuzzy search. It retries shorter prefixes and single words when OCR garbled a name.
 

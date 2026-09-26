@@ -5,7 +5,14 @@
 // dark-text-on-white, which Tesseract reads far more reliably than a whole
 // busy screenshot. Otherwise the full image is sent, upscaled and greyscaled.
 
-import { detectCardGrid, subRect, NAME_REGION, QTY_REGION } from '@shared/cardGrid.js'
+import {
+  detectCardGrid,
+  dominantBorderColor,
+  findCaption,
+  subRect,
+  NAME_REGION,
+  QTY_REGION
+} from '@shared/cardGrid.js'
 import { findGlyphGroups } from '@shared/glyphs.js'
 
 const NAME_HEIGHT = 72 // px the name strip is scaled to
@@ -140,7 +147,7 @@ async function fullImage(bitmap) {
 }
 
 /**
- * @returns {Promise<{cards: Array<{rect, name, nameAlt, qtyGlyphs}>} | {full: Uint8Array}>}
+ * @returns {Promise<{cards: Array<{rect, name, nameAlt, boxName?, boxNameAlt?, qtyGlyphs}>} | {full: Uint8Array}>}
  */
 export async function prepareScreenshot(blob) {
   const bitmap = await createImageBitmap(blob)
@@ -153,13 +160,26 @@ export async function prepareScreenshot(blob) {
 
     if (!rects.length) return { full: await fullImage(bitmap) }
 
+    // YGOprodeck prints each card's name as a caption under the image; it
+    // is far easier to read than the tiny name box on the card itself.
+    const bg = dominantBorderColor(data, bitmap.width, bitmap.height)
     const cards = []
     for (const rect of rects) {
-      const [name, qtyGlyphs] = await Promise.all([
+      const caption = findCaption(data, bitmap.width, bitmap.height, rect, bg)
+      const [captionCrop, box, qtyGlyphs] = await Promise.all([
+        caption ? cropVariants(bitmap, caption, NAME_HEIGHT) : null,
         cropVariants(bitmap, subRect(rect, NAME_REGION), NAME_HEIGHT),
         quantityGlyphs(bitmap, subRect(rect, QTY_REGION))
       ])
-      cards.push({ rect, name: name.primary, nameAlt: name.alt, qtyGlyphs })
+      const name = captionCrop || box
+      cards.push({
+        rect,
+        name: name.primary,
+        nameAlt: name.alt,
+        // The name box helps tell apart captions cut off with "..."
+        ...(captionCrop ? { boxName: box.primary, boxNameAlt: box.alt } : {}),
+        qtyGlyphs
+      })
     }
     return { cards }
   } finally {

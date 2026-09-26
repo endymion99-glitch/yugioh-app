@@ -4,6 +4,7 @@
 
 import { parseCardList } from '@shared/textImport.js'
 import { parseYdk } from '@shared/ydk.js'
+import { isTruncated } from '@shared/fuzzy.js'
 import { extractCandidates, mergeMatches, pickName, pickQuantity } from '@shared/ocrParse.js'
 
 function collect(found) {
@@ -64,7 +65,7 @@ export async function importYdk(api, text, onProgress) {
  * @param {object} api YgoApi
  * @param {object} ocr {recognizeName, recognizeQuantity, recognizeLines}
  * @param {object} payload from the renderer's prepareScreenshot():
- *   {cards: [{rect, name, nameAlt, qtyGlyphs: [png]}]} when a card grid
+ *   {cards: [{rect, name, nameAlt, boxName?, boxNameAlt?, qtyGlyphs: [png]}]} when a card grid
  *   was found, otherwise {full: <png bytes>}
  */
 export async function importScreenshot(api, ocr, payload, onProgress) {
@@ -85,10 +86,17 @@ export async function importScreenshot(api, ocr, payload, onProgress) {
         const second =
           !pickName([first]) || first.confidence < 75 ? await ocr.recognizeName(cell.nameAlt) : null
         const name = pickName([first, second])
+        // A caption cut off with "..." can fit several cards; the tiny name
+        // box on the card image helps pick the right one.
+        let hint
+        if (name && isTruncated(name.text) && cell.boxName) {
+          const box = pickName(await Promise.all([ocr.recognizeName(cell.boxName), ocr.recognizeName(cell.boxNameAlt)]))
+          hint = box?.text
+        }
         const qtyReads = await Promise.all((cell.qtyGlyphs || []).map((g) => ocr.recognizeQuantity(g)))
         const quantity = pickQuantity(qtyReads) ?? 1
         const bbox = { x0: cell.rect.x, y0: cell.rect.y, x1: cell.rect.x + cell.rect.w, y1: cell.rect.y + cell.rect.h }
-        if (name) candidates[i] = { text: name.text, quantity, confidence: name.confidence, bbox }
+        if (name) candidates[i] = { text: name.text, hint, quantity, confidence: name.confidence, bbox }
         else unreadable[i] = { text: `Card ${i + 1} — name unreadable`, quantity }
         report('ocr', ++done, cells.length)
       })
@@ -106,17 +114,20 @@ export async function importScreenshot(api, ocr, payload, onProgress) {
   }
 
   // Identical text is looked up once.
-  const uniqueTexts = [...new Set(candidates.map((c) => c.text))]
-  const matches = await mapWithProgress(uniqueTexts, (t) => api.matchName(t), (d, t) =>
-    report('matching', d, t)
+  const keyOf = (c) => `${c.text}\u0000${c.hint || ''}`
+  const unique = [...new Map(candidates.map((c) => [keyOf(c), c])).values()]
+  const matches = await mapWithProgress(
+    unique,
+    (c) => api.matchName(c.text, { hint: c.hint }),
+    (d, t) => report('matching', d, t)
   )
-  const byText = new Map(uniqueTexts.map((t, i) => [t, matches[i]]))
+  const byKey = new Map(unique.map((c, i) => [keyOf(c), matches[i]]))
 
   const matched = []
   const cardsById = new Map()
   const unrecognized = new Map()
   for (const c of candidates) {
-    const m = byText.get(c.text)
+    const m = byKey.get(keyOf(c))
     if (m) {
       matched.push({ cardId: m.card.id, quantity: c.quantity, bbox: c.bbox, text: c.text })
       cardsById.set(m.card.id, m.card)

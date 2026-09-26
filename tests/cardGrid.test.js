@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { detectCardGrid, subRect, NAME_REGION } from '../src/shared/cardGrid.js'
+import {
+  detectCardGrid,
+  dominantBorderColor,
+  findCaption,
+  subRect,
+  NAME_REGION
+} from '../src/shared/cardGrid.js'
 import { findGlyphGroups } from '../src/shared/glyphs.js'
 import { pickName, pickQuantity } from '../src/shared/ocrParse.js'
 
@@ -36,6 +42,36 @@ describe('detectCardGrid', () => {
     c.fill(10 + W * 3 + 30, 10, W, H, [40, 90, 170])
     const rects = detectCardGrid(c.px, 560, 300)
     expect(rects.map((r) => r.x)).toEqual([10, 10 + W, 10 + 2 * W, 10 + W * 3 + 30])
+  })
+
+  it('keeps a card whole when its artwork is close to the background colour', () => {
+    const c = canvas(400, 260, [30, 31, 34])
+    const W = 100
+    const H = Math.round(W * (614 / 421))
+    for (const x of [10, 130, 250]) c.fill(x, 10, W, H, [30, 160, 150])
+    // Third card: dark art covering most of its right-hand side.
+    c.fill(250 + 60, 30, 36, 110, [34, 33, 36])
+    const rects = detectCardGrid(c.px, 400, 260)
+    expect(rects.map((r) => [r.x, r.w])).toEqual([
+      [10, W],
+      [130, W],
+      [250, W]
+    ])
+  })
+
+  it('finds the name caption under a card, skipping nothing above it', () => {
+    const c = canvas(300, 300, [30, 31, 34])
+    const card = { x: 20, y: 10, w: 100, h: 146 }
+    c.fill(card.x, card.y, card.w, card.h, [30, 160, 150])
+    c.fill(35, 162, 70, 11, [230, 230, 230]) // name line
+    c.fill(50, 181, 40, 11, [200, 200, 200]) // rarity line
+    const bg = dominantBorderColor(c.px, 300, 300)
+    const cap = findCaption(c.px, 300, 300, card, bg)
+    expect(cap.y).toBeLessThanOrEqual(162)
+    expect(cap.y + cap.h).toBeGreaterThanOrEqual(173)
+    expect(cap.y + cap.h).toBeLessThan(181)
+    expect(cap.x).toBeLessThanOrEqual(35)
+    expect(findCaption(c.px, 300, 300, { x: 160, y: 10, w: 100, h: 146 }, bg)).toBeNull()
   })
 
   it('returns nothing for an image without cards', () => {

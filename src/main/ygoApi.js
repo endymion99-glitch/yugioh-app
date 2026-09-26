@@ -7,7 +7,14 @@ import {
   getCachedCardByName,
   searchCachedCards
 } from './db/repositories.js'
-import { bestMatch, normalizeName, isTruncated, rankSearchResults } from '@shared/fuzzy.js'
+import {
+  bestMatch,
+  matchScore,
+  similarity,
+  normalizeName,
+  isTruncated,
+  rankSearchResults
+} from '@shared/fuzzy.js'
 
 // YGO_API_BASE lets development point the app at a mock server.
 export const API_BASE =
@@ -197,9 +204,13 @@ export class YgoApi {
    * Resolves free text (a typed or OCR'd card name) to a card. Tries, in
    * order: exact cached name, exact API name, fuzzy API search, and fuzzy
    * searches on shorter prefixes / individual words for OCR-garbled text.
+   *
+   * `hint` is other text believed to be the same card's name (e.g. the name
+   * box read off the card image). It only breaks ties between equally good
+   * matches, such as "Steel Ogre Grot..." fitting both Grotto #1 and #2.
    * Returns {card, score} or null.
    */
-  async matchName(text) {
+  async matchName(text, { hint } = {}) {
     const name = String(text || '').trim()
     if (!name) return null
     const clean = name.replace(/(\.\.\.|…)\s*$/, '').trim()
@@ -212,6 +223,7 @@ export class YgoApi {
     }
 
     const tried = new Set()
+    const pool = new Map()
     let best = null
     const consider = async (q) => {
       const key = q.toLowerCase()
@@ -219,12 +231,25 @@ export class YgoApi {
       tried.add(key)
       const cards = await this.query({ fname: q })
       if (!cards.length) return
+      for (const c of cards) pool.set(c.id, c)
       const m = bestMatch(name, cards)
       if (m && (!best || m.score > best.score)) best = { card: m.card, score: m.score }
     }
 
+    const finish = () => {
+      if (!best || best.score < MATCH_THRESHOLD) return null
+      if (hint) {
+        const tied = [...pool.values()].filter((c) => matchScore(name, c.name) >= best.score - 0.02)
+        if (tied.length > 1) {
+          const byHint = tied.reduce((a, b) => (similarity(hint, b.name) > similarity(hint, a.name) ? b : a))
+          return { card: byHint, score: best.score }
+        }
+      }
+      return best
+    }
+
     await consider(clean)
-    if (best?.score >= 0.9) return best
+    if (best?.score >= 0.9) return finish()
 
     // OCR errors usually break the fname substring match, so retry with
     // shorter prefixes and with the longest individual words.
@@ -243,7 +268,7 @@ export class YgoApi {
       await consider(w)
     }
 
-    return best && best.score >= MATCH_THRESHOLD ? best : null
+    return finish()
   }
 }
 
