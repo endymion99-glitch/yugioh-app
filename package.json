@@ -14,9 +14,9 @@
     "start": "electron-vite preview",
     "test": "vitest run",
     "rebuild": "electron-builder install-app-deps",
-    "dist": "electron-vite build && electron-builder --win",
-    "dist:win": "electron-vite build && electron-builder --win nsis portable",
-    "dist:dir": "electron-vite build && electron-builder --dir",
+    "dist": "electron-vite build && electron-builder --win --publish never",
+    "dist:win": "electron-vite build && electron-builder --win nsis portable --publish never",
+    "dist:dir": "electron-vite build && electron-builder --dir --publish never",
     "art-index": "node --no-warnings scripts/build-art-index.mjs"
   },
   "dependencies": {
