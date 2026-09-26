@@ -13,7 +13,7 @@
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
     "test": "vitest run",
-    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "rebuild": "electron-builder install-app-deps",
     "dist": "electron-vite build && electron-builder --win",
     "dist:win": "electron-vite build && electron-builder --win nsis portable",
     "dist:dir": "electron-vite build && electron-builder --dir"
@@ -25,7 +25,6 @@
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.2.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^5.2.0",
     "electron": "^44.4.5",

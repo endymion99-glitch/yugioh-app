@@ -123,14 +123,17 @@ export function extractCandidates(lines) {
   const card = estimateCardSize(segments)
 
   // Attach each quantity to the nearest name above it in the same column.
+  // The overlay sits at the card's bottom-right, so the owning name is at or
+  // to the left of it; the next card's name is always further right.
   for (const q of quantities) {
     let best = null
     for (const s of segments) {
       const dy = cy(q.bbox) - cy(s.bbox)
-      const dx = Math.abs(cx(q.bbox) - cx(s.bbox))
+      const dx = cx(q.bbox) - cx(s.bbox)
       if (s.bbox.y1 > q.bbox.y0 + height(q.bbox) / 2) continue
-      if (dy > card.height * 1.15 || dx > card.width * 0.75) continue
-      if (!best || dy < best.dy || (dy === best.dy && dx < best.dx)) best = { s, dy, dx }
+      if (dy > card.height * 1.15) continue
+      if (dx < -card.width * 0.1 || dx > card.width * 0.9) continue
+      if (!best || dy < best.dy || (dy === best.dy && Math.abs(dx) < Math.abs(best.dx))) best = { s, dy, dx }
     }
     if (best) {
       best.s.quantity = best.s.qtyFound ? Math.max(best.s.quantity, q.value) : q.value
@@ -178,4 +181,33 @@ export function mergeMatches(matches, card) {
     totals.set(cardId, instances.reduce((s, i) => s + i.quantity, 0))
   }
   return totals
+}
+
+// ------------------------------------------------------ per-card crops --
+
+/**
+ * Picks the most plausible card name from OCR results of the same name strip
+ * (e.g. normal and inverted). Returns {text, confidence} or null.
+ */
+export function pickName(results) {
+  let best = null
+  for (const r of results) {
+    if (!r) continue
+    const text = cleanOcrText(r.text.split('\n')[0])
+    if (!looksLikeName(text)) continue
+    if (!best || r.confidence > best.confidence) best = { text, confidence: r.confidence }
+  }
+  return best
+}
+
+/**
+ * Reads the copy-count overlay from OCR results of candidate glyph images
+ * (see glyphs.js), best candidate first. Returns a number or null.
+ */
+export function pickQuantity(results) {
+  for (const r of results) {
+    const m = r?.text?.replace(/\s+/g, '').match(QTY_RE)
+    if (m && r.confidence >= 70 && Number(m[1]) >= 1) return Number(m[1])
+  }
+  return null
 }

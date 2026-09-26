@@ -3,12 +3,12 @@ import { writeFile } from 'node:fs/promises'
 import bcrypt from 'bcryptjs'
 import * as repo from './db/repositories.js'
 import { YgoApi } from './ygoApi.js'
-import { recognizeLines } from './ocr.js'
+import * as ocr from './ocr.js'
 import { importCardList, importYdk, importScreenshot } from './importService.js'
 import { validateDeck, SECTIONS } from '@shared/deckRules.js'
 import { buildYdk } from '@shared/ydk.js'
 
-const MAX_IMAGE_BYTES = 40 * 1024 * 1024
+const MAX_IMAGE_BYTES = 80 * 1024 * 1024
 const MAX_TEXT_BYTES = 2 * 1024 * 1024
 
 class UserError extends Error {}
@@ -132,12 +132,21 @@ export function registerIpc(db) {
     return importYdk(api, s, progressSender(event))
   })
 
-  handle('import:ocr', (event, bytes) => {
-    if (!(bytes instanceof Uint8Array) || bytes.byteLength === 0) {
+  handle('import:ocr', async (event, payload) => {
+    const images = payload?.cards
+      ? payload.cards.flatMap((c) => [c.name, c.nameAlt, ...(c.qtyGlyphs || [])])
+      : [payload?.full]
+    if (!images.length || !images.every((b) => b instanceof Uint8Array && b.byteLength > 0)) {
       throw new UserError('No image received.')
     }
-    if (bytes.byteLength > MAX_IMAGE_BYTES) throw new UserError('That image is too large.')
-    return importScreenshot(api, recognizeLines, Buffer.from(bytes), progressSender(event))
+    const total = images.reduce((s, b) => s + b.byteLength, 0)
+    if (total > MAX_IMAGE_BYTES) throw new UserError('That image is too large.')
+    try {
+      return await importScreenshot(api, ocr, payload, progressSender(event))
+    } finally {
+      // Imports are occasional; don't keep the OCR model in memory.
+      ocr.shutdownOcr().catch(() => {})
+    }
   })
 
   // --------------------------------------------------------------- decks --

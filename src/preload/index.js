@@ -31,7 +31,7 @@ contextBridge.exposeInMainWorld('api', {
     setQuantity: (cardId, quantity) => call('collection:setQuantity', cardId, quantity)
   },
   imports: {
-    ocr: (imageBytes) => call('import:ocr', imageBytes),
+    ocr: (payload) => call('import:ocr', payload),
     txt: (text) => call('import:txt', text),
     ydk: (text) => call('import:ydk', text),
     onProgress: (cb) => subscribe('import:progress', cb)

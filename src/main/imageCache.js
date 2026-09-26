@@ -12,7 +12,11 @@ import { CARD_IMAGE_CDN, CARD_IMAGE_SMALL_CDN } from '@shared/cardTypes.js'
 
 export const IMAGE_SCHEME = 'ygo-img'
 
-const SOURCES = { card: CARD_IMAGE_CDN, small: CARD_IMAGE_SMALL_CDN }
+// YGO_IMAGE_BASE (development) replaces https://images.ygoprodeck.com/images.
+const override = process.env.YGO_IMAGE_BASE
+const SOURCES = override
+  ? { card: `${override}/cards`, small: `${override}/cards_small` }
+  : { card: CARD_IMAGE_CDN, small: CARD_IMAGE_SMALL_CDN }
 
 export function registerImageProtocolScheme() {
   protocol.registerSchemesAsPrivileged([

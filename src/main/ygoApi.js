@@ -9,7 +9,9 @@ import {
 } from './db/repositories.js'
 import { bestMatch, normalizeName, isTruncated, rankSearchResults } from '@shared/fuzzy.js'
 
-export const API_BASE = 'https://db.ygoprodeck.com/api/v7/cardinfo.php'
+// YGO_API_BASE lets development point the app at a mock server.
+export const API_BASE =
+  process.env.YGO_API_BASE || 'https://db.ygoprodeck.com/api/v7/cardinfo.php'
 
 // OCR / typed names scoring at least this against a real card name are
 // treated as that card.

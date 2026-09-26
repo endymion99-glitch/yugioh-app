@@ -4,7 +4,7 @@
 
 import { parseCardList } from '@shared/textImport.js'
 import { parseYdk } from '@shared/ydk.js'
-import { extractCandidates, mergeMatches } from '@shared/ocrParse.js'
+import { extractCandidates, mergeMatches, pickName, pickQuantity } from '@shared/ocrParse.js'
 
 function collect(found) {
   // Keep first-seen order, merge duplicates by card id.
@@ -59,18 +59,56 @@ export async function importYdk(api, text, onProgress) {
 }
 
 /**
+ * Screenshot import.
+ *
  * @param {object} api YgoApi
- * @param {(image:Buffer, onProgress:(p:number)=>void)=>Promise<Array>} recognizeLines
+ * @param {object} ocr {recognizeName, recognizeQuantity, recognizeLines}
+ * @param {object} payload from the renderer's prepareScreenshot():
+ *   {cards: [{rect, name, nameAlt, qtyGlyphs: [png]}]} when a card grid
+ *   was found, otherwise {full: <png bytes>}
  */
-export async function importScreenshot(api, recognizeLines, image, onProgress) {
-  onProgress?.({ stage: 'ocr', done: 0, total: 1 })
-  const lines = await recognizeLines(image, (p) => onProgress?.({ stage: 'ocr', done: p, total: 1 }))
-  const { candidates, card } = extractCandidates(lines)
+export async function importScreenshot(api, ocr, payload, onProgress) {
+  const report = (stage, done, total) => onProgress?.({ stage, done, total })
+  let candidates
+  let card
+  let unreadable = []
+
+  if (payload.cards?.length) {
+    const cells = payload.cards
+    let done = 0
+    report('ocr', 0, cells.length)
+    candidates = []
+    await Promise.all(
+      cells.map(async (cell, i) => {
+        const first = await ocr.recognizeName(cell.name)
+        // Only try the inverted strip when the first read looks doubtful.
+        const second =
+          !pickName([first]) || first.confidence < 75 ? await ocr.recognizeName(cell.nameAlt) : null
+        const name = pickName([first, second])
+        const qtyReads = await Promise.all((cell.qtyGlyphs || []).map((g) => ocr.recognizeQuantity(g)))
+        const quantity = pickQuantity(qtyReads) ?? 1
+        const bbox = { x0: cell.rect.x, y0: cell.rect.y, x1: cell.rect.x + cell.rect.w, y1: cell.rect.y + cell.rect.h }
+        if (name) candidates[i] = { text: name.text, quantity, confidence: name.confidence, bbox }
+        else unreadable[i] = { text: `Card ${i + 1} — name unreadable`, quantity }
+        report('ocr', ++done, cells.length)
+      })
+    )
+    candidates = candidates.filter(Boolean)
+    unreadable = unreadable.filter(Boolean)
+    const median = (xs) => [...xs].sort((a, b) => a - b)[xs.length >> 1]
+    card = { width: median(cells.map((c) => c.rect.w)), height: median(cells.map((c) => c.rect.h)) }
+  } else if (payload.full) {
+    report('ocr', 0, 1)
+    const lines = await ocr.recognizeLines(payload.full)
+    ;({ candidates, card } = extractCandidates(lines))
+  } else {
+    throw new Error('No image received.')
+  }
 
   // Identical text is looked up once.
   const uniqueTexts = [...new Set(candidates.map((c) => c.text))]
   const matches = await mapWithProgress(uniqueTexts, (t) => api.matchName(t), (d, t) =>
-    onProgress?.({ stage: 'matching', done: d, total: t })
+    report('matching', d, t)
   )
   const byText = new Map(uniqueTexts.map((t, i) => [t, matches[i]]))
 
@@ -95,5 +133,5 @@ export async function importScreenshot(api, recognizeLines, image, onProgress) {
     const from = matched.find((m) => m.cardId === cardId).text
     found.push({ card: cardsById.get(cardId), quantity, from })
   }
-  return { found, unrecognized: [...unrecognized.values()] }
+  return { found, unrecognized: [...unrecognized.values(), ...unreadable] }
 }
