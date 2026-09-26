@@ -1,0 +1,40 @@
+appId: com.ygo.collectionmanager
+productName: YGO Collection Manager
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+  - '!**/{README,CHANGELOG}.md'
+  - '!node_modules/@tesseract.js-data/eng/4.0.0/**'
+# better-sqlite3 ships Node-API prebuilds (ABI-stable across Node/Electron),
+# so no per-Electron-version native rebuild is needed.
+npmRebuild: false
+asar: true
+# Tesseract runs in a worker thread, which cannot read scripts or language
+# data from inside app.asar.
+asarUnpack:
+  - node_modules/better-sqlite3/**
+  - node_modules/tesseract.js/**
+  - node_modules/tesseract.js-core/**
+  - node_modules/@tesseract.js-data/**
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  artifactName: ${productName}-${version}-${arch}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-Setup-${version}.${ext}
+  deleteAppDataOnUninstall: false
+portable:
+  artifactName: ${productName}-Portable-${version}.${ext}
+mac:
+  target: dmg
+linux:
+  target: AppImage
