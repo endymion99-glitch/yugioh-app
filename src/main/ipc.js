@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import * as repo from './db/repositories.js'
 import { YgoApi } from './ygoApi.js'
 import * as ocr from './ocr.js'
+import { loadArtIndex } from './artIndex.js'
 import { importCardList, importYdk, importScreenshot } from './importService.js'
 import { validateDeck, SECTIONS } from '@shared/deckRules.js'
 import { buildYdk } from '@shared/ydk.js'
@@ -120,6 +121,11 @@ export function registerIpc(db) {
 
   // ------------------------------------------------------------- imports --
 
+  handle('import:artInfo', async () => {
+    const index = await loadArtIndex()
+    return index ? { cards: index.size, builtAt: index.builtAt } : null
+  })
+
   handle('import:txt', (event, content) => {
     const s = String(content ?? '')
     if (s.length > MAX_TEXT_BYTES) throw new UserError('That file is too large.')
@@ -147,7 +153,8 @@ export function registerIpc(db) {
     const total = images.reduce((s, b) => s + b.byteLength, 0)
     if (total > MAX_IMAGE_BYTES) throw new UserError('That image is too large.')
     try {
-      return await importScreenshot(api, ocr, payload, progressSender(event))
+      const artIndex = await loadArtIndex()
+      return await importScreenshot(api, ocr, payload, progressSender(event), artIndex)
     } finally {
       // Imports are occasional; don't keep the OCR model in memory.
       ocr.shutdownOcr().catch(() => {})

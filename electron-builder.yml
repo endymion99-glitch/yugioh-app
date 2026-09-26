@@ -16,6 +16,11 @@ files:
   - '!node_modules/node-addon-api/**'
 # better-sqlite3 ships Node-API prebuilds (ABI-stable across Node/Electron),
 # so no per-Electron-version native rebuild is needed.
+# The artwork index (npm run art-index) ships next to app.asar.
+extraResources:
+  - from: resources
+    to: .
+    filter: [art-index.bin]
 npmRebuild: false
 asar: true
 # Tesseract runs in worker threads, which cannot load scripts from inside

@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('api', {
   },
   imports: {
     ocr: (payload) => call('import:ocr', payload),
+    artInfo: () => call('import:artInfo'),
     txt: (text) => call('import:txt', text),
     ydk: (text) => call('import:ydk', text),
     onProgress: (cb) => subscribe('import:progress', cb)

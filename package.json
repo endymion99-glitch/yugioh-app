@@ -16,7 +16,8 @@
     "rebuild": "electron-builder install-app-deps",
     "dist": "electron-vite build && electron-builder --win",
     "dist:win": "electron-vite build && electron-builder --win nsis portable",
-    "dist:dir": "electron-vite build && electron-builder --dir"
+    "dist:dir": "electron-vite build && electron-builder --dir",
+    "art-index": "node --no-warnings scripts/build-art-index.mjs"
   },
   "dependencies": {
     "@tesseract.js-data/eng": "^1.0.0",
@@ -30,6 +31,7 @@
     "electron": "^44.4.5",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
+    "jpeg-js": "^0.4.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "tailwindcss": "^4.3.3",

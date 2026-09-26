@@ -7,3 +7,4 @@ dist/
 *.sqlite-journal
 *.db
 .vite/
+resources/art-index.bin

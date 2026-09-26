@@ -14,6 +14,7 @@ import {
   QTY_REGION
 } from '@shared/cardGrid.js'
 import { findGlyphGroups } from '@shared/glyphs.js'
+import { fingerprintCard } from '@shared/artHash.js'
 
 const NAME_HEIGHT = 72 // px the name strip is scaled to
 const QTY_HEIGHT = 140 // px the corner crop is scaled to before glyph search
@@ -131,6 +132,16 @@ async function quantityGlyphs(source, rect) {
   )
 }
 
+async function cardPreview(source, rect) {
+  const w = 120
+  const h = Math.round((rect.h / rect.w) * w)
+  const canvas = new OffscreenCanvas(w, h)
+  const ctx = canvas.getContext('2d')
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(source, rect.x, rect.y, rect.w, rect.h, 0, 0, w, h)
+  return URL.createObjectURL(await canvas.convertToBlob({ type: 'image/png' }))
+}
+
 async function fullImage(bitmap) {
   let scale = Math.min(3, Math.max(1, FULL_TARGET_WIDTH / bitmap.width))
   if (bitmap.width * bitmap.height * scale * scale > FULL_MAX_PIXELS) {
@@ -147,7 +158,11 @@ async function fullImage(bitmap) {
 }
 
 /**
- * @returns {Promise<{cards: Array<{rect, name, nameAlt, boxName?, boxNameAlt?, qtyGlyphs}>} | {full: Uint8Array}>}
+ * @returns {Promise<{cards: Array<{rect, name, nameAlt, boxName?, boxNameAlt?, qtyGlyphs, art}>,
+ *                    previews: string[]} | {full: Uint8Array}>}
+ *   `previews` are object URLs of each card as it appears in the screenshot
+ *   (for the review screen; revoke them when done). Only `cards` / `full`
+ *   are sent to the main process.
  */
 export async function prepareScreenshot(blob) {
   const bitmap = await createImageBitmap(blob)
@@ -164,6 +179,7 @@ export async function prepareScreenshot(blob) {
     // is far easier to read than the tiny name box on the card itself.
     const bg = dominantBorderColor(data, bitmap.width, bitmap.height)
     const cards = []
+    const previews = []
     for (const rect of rects) {
       const caption = findCaption(data, bitmap.width, bitmap.height, rect, bg)
       const [captionCrop, box, qtyGlyphs] = await Promise.all([
@@ -178,10 +194,12 @@ export async function prepareScreenshot(blob) {
         nameAlt: name.alt,
         // The name box helps tell apart captions cut off with "..."
         ...(captionCrop ? { boxName: box.primary, boxNameAlt: box.alt } : {}),
-        qtyGlyphs
+        qtyGlyphs,
+        art: fingerprintCard(data, bitmap.width, bitmap.height, rect)
       })
+      previews.push(await cardPreview(bitmap, rect))
     }
-    return { cards }
+    return { cards, previews }
   } finally {
     bitmap.close()
   }

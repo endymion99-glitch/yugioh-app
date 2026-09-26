@@ -69,6 +69,8 @@ export default function ImportPage({ navigate, registerGuard }) {
   const [found, setFound] = useState([])
   const [unrecognized, setUnrecognized] = useState([])
   const [preview, setPreview] = useState(null)
+  const [cellPreviews, setCellPreviews] = useState([])
+  const [artInfo, setArtInfo] = useState(undefined)
   const [busy, setBusy] = useState(false)
   const [dragging, setDragging] = useState(false)
   const inputs = useRef({})
@@ -82,6 +84,13 @@ export default function ImportPage({ navigate, registerGuard }) {
 
   useEffect(() => api.imports.onProgress(setProgress), [])
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview])
+  useEffect(() => () => cellPreviews.forEach((u) => URL.revokeObjectURL(u)), [cellPreviews])
+  useEffect(() => {
+    api.imports
+      .artInfo()
+      .then(setArtInfo)
+      .catch(() => setArtInfo(null))
+  }, [])
 
   const run = async (method, file) => {
     setPhase('working')
@@ -90,7 +99,8 @@ export default function ImportPage({ navigate, registerGuard }) {
       let result
       if (method === 'screenshot') {
         setPreview(URL.createObjectURL(file))
-        const payload = await prepareScreenshot(file)
+        const { previews = [], ...payload } = await prepareScreenshot(file)
+        setCellPreviews(previews)
         result = await api.imports.ocr(payload)
       } else {
         const text = await file.text()
@@ -136,6 +146,7 @@ export default function ImportPage({ navigate, registerGuard }) {
     setFound([])
     setUnrecognized([])
     setPreview(null)
+    setCellPreviews([])
     setPhase('choose')
   }
 
@@ -173,6 +184,7 @@ export default function ImportPage({ navigate, registerGuard }) {
             unrecognized={unrecognized}
             setUnrecognized={setUnrecognized}
             preview={preview}
+            cellPreviews={cellPreviews}
             onConfirm={confirm}
             onCancel={() => (!dirty.current || window.confirm('Discard this import?')) && reset()}
             busy={busy}
@@ -238,6 +250,15 @@ export default function ImportPage({ navigate, registerGuard }) {
         <p className="mt-6 text-center text-xs text-white/30">
           Tip: drag a screenshot, .txt or .ydk file anywhere onto this page.
         </p>
+        {artInfo !== undefined && (
+          <p className="mt-1 text-center text-xs text-white/30">
+            {artInfo
+              ? `Screenshots are matched by artwork (${artInfo.cards.toLocaleString()} cards, updated ${new Date(
+                  artInfo.builtAt * 1000
+                ).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}) and by name.`
+              : 'Artwork recognition isn’t available in this build; screenshots are matched by name.'}
+          </p>
+        )}
       </div>
 
       {dragging && (

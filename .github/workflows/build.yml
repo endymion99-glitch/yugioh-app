@@ -20,8 +20,45 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  # Fingerprints every card artwork on YGOprodeck so the app can recognise
+  # cards by their picture. Each run starts from the most recently saved
+  # index and only downloads cards it doesn't have yet, so after the first
+  # (~20 minute) run this takes a minute or two.
+  art-index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/cache/restore@v4
+        with:
+          path: resources/art-index.bin
+          key: art-index-v1-${{ github.run_id }}
+          restore-keys: art-index-v1-
+      - run: npm run art-index
+        timeout-minutes: 60
+      # Save and ship even a partial index: cards missing from it just fall
+      # back to name matching, and the next run fills the gaps.
+      - if: ${{ always() && hashFiles('resources/art-index.bin') != '' }}
+        uses: actions/cache/save@v4
+        with:
+          path: resources/art-index.bin
+          key: art-index-v1-${{ github.run_id }}
+      - if: ${{ always() && hashFiles('resources/art-index.bin') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: art-index
+          path: resources/art-index.bin
+          retention-days: 7
+
   windows:
-    needs: test
+    needs: [test, art-index]
+    # If the artwork index couldn't be built (e.g. YGOprodeck unreachable),
+    # still ship the app; it then matches screenshots by name only.
+    if: ${{ !cancelled() && needs.test.result == 'success' }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +67,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: art-index
+          path: resources
       - run: npm run dist:win
         env:
           # No code-signing certificate is configured.

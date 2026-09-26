@@ -18,6 +18,7 @@ A desktop app for tracking your Yu-Gi-Oh! card collection and building decks dur
   - there is no banlist
 
   A deck can only be saved when it passes every check. You can create, rename, delete and switch decks, and **export any deck as a `.ydk`** to import it on YGOprodeck.
+- **Artwork recognition.** Screenshot imports match each card by its artwork as well as its name, and flag any disagreement for you to check.
 - **Offline viewing.** Card data is cached in SQLite and card images are cached on disk (`ygo-img://` protocol). Once cached, your collection and decks display without internet.
 
 ## Development
@@ -52,14 +53,24 @@ src/
 
 The database is `ygo-collection.sqlite` in Electron's `userData` folder (on Windows, `%APPDATA%\YGO Collection Manager`). Cached images go in `image-cache/` in the same folder. The schema lives in `src/main/db/schema.js`. To change it, append a new migration to `MIGRATIONS`. Never edit a migration that has already shipped.
 
-### How screenshot OCR works
+### How screenshot import works
+
+Each card is identified two ways, by its **artwork** and by its **name**, and the results are compared.
 
 1. The renderer finds card rectangles by separating the cards from the plain background (`src/shared/cardGrid.js`).
-2. For each card, it crops the name caption that YGOprodeck prints under the card. If there's no caption, it uses the name box at the top of the card instead. The crop is prepared as a dark-on-white version plus its inverse, so it doesn't matter whether the name is printed dark or light. When a caption is cut off ("Steel Ogre Grot..."), the card's own name box is also read and used to pick between cards whose names start the same way.
-3. It looks for large glyphs in the card's bottom-right corner with an adaptive threshold and connected components (`src/shared/glyphs.js`). Each candidate is rendered as a clean mask image for the quantity overlay.
-4. The main process runs Tesseract on those small images and matches the names to real cards with fuzzy search. It retries shorter prefixes and single words when OCR garbled a name.
+2. **Artwork.** Each card's art box is turned into a fingerprint: a perceptual hash plus a tiny colour thumbnail (`src/shared/artHash.js`). The fingerprint is looked up in an index of every card image on YGOprodeck.
+3. **Name.** The app reads the caption YGOprodeck prints under each card with Tesseract. If there's no caption, it reads the card's name box instead. The name is matched with fuzzy search. For captions cut off with "...", the card's name box helps choose between names that start the same way.
+4. **Quantity.** The copy-count overlay is found with an adaptive threshold and connected components (`src/shared/glyphs.js`), then read by OCR.
+5. **Deciding.**
+   - When the artwork match is confident, the artwork decides. If the name clearly points to a different card, the review screen flags it and offers "Use <that card>".
+   - Otherwise the name decides. If the artwork clearly isn't that card, that's flagged too.
+   - Flagged cards appear first, next to the card as cropped from your screenshot.
 
-If no card grid is found, the whole screenshot goes through Tesseract's sparse-text mode as a fallback.
+If no card grid is found, the whole screenshot goes through Tesseract's sparse-text mode instead, using names only.
+
+### The artwork index
+
+`npm run art-index` downloads every card image from YGOprodeck (at up to 15 requests per second) and writes `resources/art-index.bin` (about 64 bytes per artwork). electron-builder bundles the file. The build is incremental: it keeps images already in an existing index, so refreshing only fetches new cards. The GitHub workflow builds the index, caches it between runs and bundles it into the Windows app. Without the file, the app falls back to matching names only, and the Import page says so.
 
 ### Pointing at a mock API
 
