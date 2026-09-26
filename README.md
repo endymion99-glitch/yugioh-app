@@ -86,12 +86,12 @@ Run this on Windows. Building the Windows target from Linux or macOS needs Wine.
 
 ### Publishing a release
 
-Pushing a version tag builds the installers and publishes them as a GitHub Release. Bump `version` in `package.json` first so the file names match.
+Bump `version` in `package.json` first so the file names match, then either:
 
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
+- push a version tag (`git tag v0.1.0 && git push origin v0.1.0`), or
+- on GitHub, open **Actions → Build → Run workflow**, tick **Publish a GitHub Release**, and run it. The tag is created from `package.json`'s version.
+
+Either way the installers are built and published as a GitHub Release.
 
 Players can always get the newest version from `https://github.com/endymion99-glitch/yugioh-app/releases/latest`.
 

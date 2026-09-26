@@ -6,6 +6,11 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      release:
+        description: Publish a GitHub Release (version taken from package.json)
+        type: boolean
+        default: false
 
 jobs:
   test:
@@ -82,21 +87,34 @@ jobs:
           path: dist/*.exe
           if-no-files-found: error
 
-  # Pushing a version tag (git tag v0.2.0 && git push origin v0.2.0)
-  # publishes the Windows builds as a GitHub Release.
+  # Publishes the Windows builds as a GitHub Release, either when a version
+  # tag is pushed (git tag v0.2.0 && git push origin v0.2.0) or when the
+  # workflow is run by hand with "release" ticked (tag made from package.json).
   release:
     needs: windows
-    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+      - id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/download-artifact@v4
         with:
           name: windows-installers
           path: dist
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: YGO Collection Manager ${{ steps.version.outputs.tag }}
           files: dist/*.exe
           make_latest: true
           body: |
