@@ -1,7 +1,7 @@
 {
   "name": "yugioh-collection-manager",
   "productName": "YGO Collection Manager",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Personal Yu-Gi-Oh card collection manager and deck builder for pack-opening tournaments",
   "main": "./out/main/index.js",
   "author": "YGO Collection Manager",

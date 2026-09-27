@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isExtraDeckType, defaultSectionFor, compareCards } from '../src/shared/cardTypes.js'
+import { isExtraDeckType, defaultSectionFor, compareCards, compareByStat, isMonsterKind } from '../src/shared/cardTypes.js'
 import { validateDeck, availableCopies } from '../src/shared/deckRules.js'
 import { parseYdk, buildYdk } from '../src/shared/ydk.js'
 import { parseCardList } from '../src/shared/textImport.js'
@@ -34,6 +34,69 @@ describe('cardTypes', () => {
       { name: 'Kuriboh', type: 'Effect Monster' }
     ].sort(compareCards)
     expect(sorted.map((c) => c.name)).toEqual(['Kuriboh', 'Pot of Greed', 'Mirror Force'])
+  })
+
+  describe('monster kinds', () => {
+    const card = (type, frameType) => ({ type, frameType })
+    it.each([
+      [card('Effect Monster', 'effect'), 'effect', true],
+      [card('Tuner Monster', 'effect'), 'effect', true], // effect monster despite the type name
+      [card('Tuner Monster', 'effect'), 'tuner', true],
+      [card('Gemini Monster'), 'effect', true], // no frameType cached: guessed from the type
+      [card('Normal Monster', 'normal'), 'effect', false],
+      [card('Normal Monster', 'normal'), 'normal', true],
+      [card('Ritual Effect Monster', 'ritual'), 'effect', false],
+      [card('Ritual Effect Monster', 'ritual'), 'ritual', true],
+      [card('Fusion Monster', 'fusion'), 'effect', false],
+      [card('Fusion Monster', 'fusion'), 'fusion', true],
+      [card('XYZ Pendulum Effect Monster', 'xyz_pendulum'), 'xyz', true],
+      [card('XYZ Pendulum Effect Monster', 'xyz_pendulum'), 'pendulum', true],
+      [card('Pendulum Effect Monster', 'effect_pendulum'), 'effect', true],
+      [card('Spell Card', 'spell'), 'ritual', false], // Ritual Spells are not monsters
+      [card('Trap Card', 'trap'), 'effect', false]
+    ])('%o is %s: %s', (c, kind, expected) => {
+      expect(isMonsterKind(c, kind)).toBe(expected)
+    })
+  })
+
+  describe('sorting by ATK / DEF', () => {
+    const cards = [
+      { name: 'Pot of Greed', type: 'Spell Card', atk: null, def: null },
+      { name: 'Kuriboh', type: 'Effect Monster', atk: 300, def: 200 },
+      { name: 'Blue-Eyes White Dragon', type: 'Normal Monster', atk: 3000, def: 2500 },
+      { name: 'Mirror Force', type: 'Trap Card', atk: null, def: null },
+      { name: 'Decode Talker', type: 'Link Monster', atk: 2300, def: null, linkval: 3 },
+      { name: 'Dark Magician', type: 'Normal Monster', atk: 2500, def: 2100 },
+      { name: 'Summoned Skull', type: 'Normal Monster', atk: 2500, def: 1200 },
+      { name: 'Question Mark', type: 'Effect Monster', atk: -1, def: 1000 }
+    ]
+    const names = (stat) => [...cards].sort(compareByStat(stat)).map((c) => c.name)
+
+    it('puts the highest ATK first, then cards without an ATK', () => {
+      expect(names('atk')).toEqual([
+        'Blue-Eyes White Dragon',
+        'Dark Magician', // same ATK as Summoned Skull, higher DEF
+        'Summoned Skull',
+        'Decode Talker',
+        'Kuriboh',
+        'Question Mark',
+        'Pot of Greed',
+        'Mirror Force'
+      ])
+    })
+
+    it('puts the highest DEF first; Link monsters have none', () => {
+      expect(names('def')).toEqual([
+        'Blue-Eyes White Dragon',
+        'Dark Magician',
+        'Summoned Skull',
+        'Question Mark',
+        'Kuriboh',
+        'Decode Talker',
+        'Pot of Greed',
+        'Mirror Force'
+      ])
+    })
   })
 })
 
