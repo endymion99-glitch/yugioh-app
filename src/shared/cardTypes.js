@@ -34,5 +34,61 @@ export function compareCards(a, b) {
   return a.name.localeCompare(b.name)
 }
 
+/** Monster kinds the deck builder can filter by. */
+export const MONSTER_KINDS = [
+  { id: 'normal', label: 'Normal' },
+  { id: 'effect', label: 'Effect' },
+  { id: 'ritual', label: 'Ritual' },
+  { id: 'fusion', label: 'Fusion' },
+  { id: 'synchro', label: 'Synchro' },
+  { id: 'xyz', label: 'Xyz' },
+  { id: 'link', label: 'Link' },
+  { id: 'pendulum', label: 'Pendulum' },
+  { id: 'tuner', label: 'Tuner' },
+  { id: 'flip', label: 'Flip' },
+  { id: 'gemini', label: 'Gemini' },
+  { id: 'spirit', label: 'Spirit' },
+  { id: 'toon', label: 'Toon' },
+  { id: 'union', label: 'Union' }
+]
+
+/**
+ * True when the card is a monster of that kind. "Effect" means an orange-frame
+ * Main Deck effect monster (as on YGOprodeck), so Ritual and Extra Deck
+ * monsters with effects only show under their own kinds.
+ */
+export function isMonsterKind(card, kind) {
+  const category = cardCategory(card?.type)
+  if (category !== 'monster' && category !== 'extra') return false
+  const t = String(card.type).toLowerCase()
+  if (kind === 'effect') {
+    if (card.frameType) return card.frameType.startsWith('effect')
+    return category === 'monster' && !t.includes('normal') && !t.includes('ritual') && !t.includes('token')
+  }
+  return t.includes(kind)
+}
+
+// A printed ATK/DEF, or null for "?" (stored as a negative number), Link
+// monsters' missing DEF, and Spells/Traps.
+const statOf = (card, stat) => (Number.isFinite(card[stat]) && card[stat] >= 0 ? card[stat] : null)
+
+/**
+ * Sort comparator for 'atk' or 'def', highest first. Ties are broken by the
+ * other stat, then by name. Cards without a number for that stat go last,
+ * in the usual monster/spell/trap order.
+ */
+export function compareByStat(stat) {
+  const other = stat === 'atk' ? 'def' : 'atk'
+  return (a, b) => {
+    const sa = statOf(a, stat)
+    const sb = statOf(b, stat)
+    if (sa === null || sb === null) {
+      if (sa !== sb) return sa === null ? 1 : -1
+      return compareCards(a, b)
+    }
+    return sb - sa || (statOf(b, other) ?? -1) - (statOf(a, other) ?? -1) || a.name.localeCompare(b.name)
+  }
+}
+
 export const CARD_IMAGE_CDN = 'https://images.ygoprodeck.com/images/cards'
 export const CARD_IMAGE_SMALL_CDN = 'https://images.ygoprodeck.com/images/cards_small'

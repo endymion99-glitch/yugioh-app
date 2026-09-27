@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api.js'
-import { cardCategory, compareCards, defaultSectionFor, isExtraDeckType } from '@shared/cardTypes.js'
+import {
+  MONSTER_KINDS,
+  cardCategory,
+  compareByStat,
+  compareCards,
+  defaultSectionFor,
+  isExtraDeckType,
+  isMonsterKind
+} from '@shared/cardTypes.js'
 import { validateDeck, availableCopies, RULES } from '@shared/deckRules.js'
 import { useToast } from '../components/Toast.jsx'
 import CardImage from '../components/CardImage.jsx'
@@ -14,6 +22,14 @@ const FILTERS = [
   { id: 'spell', label: 'Spells' },
   { id: 'trap', label: 'Traps' }
 ]
+
+const SORTS = [
+  { id: 'type', label: 'Sort: Type', compare: compareCards },
+  { id: 'atk', label: 'Sort: ATK (high → low)', compare: compareByStat('atk') },
+  { id: 'def', label: 'Sort: DEF (high → low)', compare: compareByStat('def') }
+]
+
+const statText = (v) => (v === null || v === undefined ? '–' : v < 0 ? '?' : v)
 
 const SECTION_META = {
   main: { label: 'Main Deck', range: `${RULES.main.min}–${RULES.main.max}`, cols: 'grid-cols-10' },
@@ -44,6 +60,8 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
   const [saved, setSaved] = useState([])
   const [filter, setFilter] = useState('')
   const [category, setCategory] = useState('all')
+  const [kind, setKind] = useState('')
+  const [sort, setSort] = useState('type')
   const [detail, setDetail] = useState(null)
   const [prompt, setPrompt] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -117,10 +135,11 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
       .filter(
         (c) =>
           (!q || c.name.toLowerCase().includes(q)) &&
-          (category === 'all' || cardCategory(c.type) === category)
+          (category === 'all' || cardCategory(c.type) === category) &&
+          (!kind || isMonsterKind(c, kind))
       )
-      .sort(compareCards)
-  }, [collection, filter, category])
+      .sort(SORTS.find((s) => s.id === sort).compare)
+  }, [collection, filter, category, kind, sort])
 
   const sections = useMemo(() => {
     const out = { main: [], extra: [], side: [] }
@@ -300,24 +319,55 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
         {/* Left: collection */}
         <section className="flex w-[42%] min-w-[380px] flex-col border-r border-white/5">
           <div className="space-y-2 p-4">
-            <input
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder="Search your collection…"
-              className="w-full rounded-lg border border-white/10 bg-ink-950/70 px-4 py-2 text-sm outline-none placeholder:text-white/30 focus:border-gold-400/60"
-            />
+            <div className="flex gap-2">
+              <input
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Search your collection…"
+                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-ink-950/70 px-4 py-2 text-sm outline-none placeholder:text-white/30 focus:border-gold-400/60"
+              />
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="rounded-lg border border-white/10 bg-ink-950/70 px-2 text-sm outline-none focus:border-gold-400/60"
+              >
+                {SORTS.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex items-center gap-1">
               {FILTERS.map((f) => (
                 <button
                   key={f.id}
-                  onClick={() => setCategory(f.id)}
+                  onClick={() => {
+                    setCategory(f.id)
+                    if (f.id === 'spell' || f.id === 'trap') setKind('')
+                  }}
                   className={`rounded-md px-2.5 py-1 text-xs ${category === f.id ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white'}`}
                 >
                   {f.label}
                 </button>
               ))}
-              <span className="ml-auto text-[11px] whitespace-nowrap text-white/35">Right-click → Side</span>
+              <select
+                value={kind}
+                onChange={(e) => {
+                  setKind(e.target.value)
+                  if (e.target.value && (category === 'spell' || category === 'trap')) setCategory('all')
+                }}
+                className={`ml-auto rounded-md border bg-ink-950/70 px-2 py-1 text-xs outline-none focus:border-gold-400/60 ${kind ? 'border-gold-400/60 text-white' : 'border-white/10 text-white/60'}`}
+              >
+                <option value="">Any monster type</option>
+                {MONSTER_KINDS.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.label} monsters
+                  </option>
+                ))}
+              </select>
             </div>
+            <p className="text-[11px] text-white/35">Click a card to add it · Right-click to add it to the Side Deck</p>
           </div>
           <div className="min-h-0 flex-1 overflow-auto px-4 pb-6">
             {collection.length === 0 && (
@@ -349,6 +399,15 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
                         {left}/{card.quantity}
                       </span>
                       <div className="mt-1 truncate text-[11px] text-white/60">{card.name}</div>
+                      {sort !== 'type' && ['monster', 'extra'].includes(cardCategory(card.type)) && (
+                        <div className="text-[10px] tabular-nums text-white/45">
+                          <span className={sort === 'atk' ? 'text-gold-300' : ''}>ATK {statText(card.atk)}</span>
+                          {' / '}
+                          <span className={sort === 'def' ? 'text-gold-300' : ''}>
+                            {card.linkval != null ? `LINK ${card.linkval}` : `DEF ${statText(card.def)}`}
+                          </span>
+                        </div>
+                      )}
                     </button>
                     <button
                       onClick={() => setDetail(card)}
