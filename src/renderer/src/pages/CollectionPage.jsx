@@ -1,26 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import { useToast } from '../components/Toast.jsx'
-import { cardCategory, compareCards } from '@shared/cardTypes.js'
+import { isMonster } from '@shared/cardTypes.js'
+import { applyFilters, filterCounts, hasLevelFilters, levelBadge, statText } from '@shared/cardFilters.js'
 import CardImage from '../components/CardImage.jsx'
 import CardDetailModal from '../components/CardDetailModal.jsx'
 import CardSearch from '../components/CardSearch.jsx'
 import Modal from '../components/Modal.jsx'
-
-const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'monster', label: 'Monsters' },
-  { id: 'extra', label: 'Extra Deck' },
-  { id: 'spell', label: 'Spells' },
-  { id: 'trap', label: 'Traps' }
-]
+import CardFilterBar, { NoMatches, useCardFilters } from '../components/CardFilterBar.jsx'
 
 export default function CollectionPage({ navigate }) {
   const toast = useToast()
   const [cards, setCards] = useState(null)
-  const [filter, setFilter] = useState('')
-  const [category, setCategory] = useState('all')
-  const [sort, setSort] = useState('name')
+  const filterState = useCardFilters('name')
+  const { filters, sort } = filterState
   const [detail, setDetail] = useState(null)
   const [adding, setAdding] = useState(false)
 
@@ -34,18 +27,9 @@ export default function CollectionPage({ navigate }) {
     load()
   }, [])
 
-  const visible = useMemo(() => {
-    if (!cards) return []
-    const q = filter.trim().toLowerCase()
-    const list = cards.filter(
-      (c) =>
-        (!q || c.name.toLowerCase().includes(q)) &&
-        (category === 'all' || cardCategory(c.type) === category)
-    )
-    if (sort === 'type') list.sort(compareCards)
-    else if (sort === 'quantity') list.sort((a, b) => b.quantity - a.quantity || a.name.localeCompare(b.name))
-    return list
-  }, [cards, filter, category, sort])
+  const visible = useMemo(() => applyFilters(cards || [], filters, sort), [cards, filters, sort])
+  const filterOptionCounts = useMemo(() => filterCounts(cards || [], filters), [cards, filters])
+  const showLevel = hasLevelFilters(filters.category) && (!!filters.levelSort || filters.levels.length > 0)
 
   const totals = useMemo(
     () => ({
@@ -108,33 +92,14 @@ export default function CollectionPage({ navigate }) {
       </header>
 
       <div className="flex flex-wrap items-center gap-3 px-8 py-4">
-        <input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+        <CardFilterBar
+          state={filterState}
+          counts={filterOptionCounts}
+          sorts={['name', 'type', 'quantity', 'atk', 'def']}
           placeholder="Filter by card name…"
-          className="w-80 rounded-lg border border-white/10 bg-ink-950/70 px-4 py-2 text-sm outline-none placeholder:text-white/30 focus:border-gold-400/60"
+          wide
         />
-        <div className="flex rounded-lg border border-white/10 p-0.5">
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setCategory(f.id)}
-              className={`rounded-md px-3 py-1.5 text-xs ${category === f.id ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white'}`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          className="rounded-lg border border-white/10 bg-ink-950 px-3 py-2 text-xs text-white/70 outline-none"
-        >
-          <option value="name">Sort: Name</option>
-          <option value="type">Sort: Type</option>
-          <option value="quantity">Sort: Copies</option>
-        </select>
-        {cards && visible.length !== cards.length && (
+        {cards && cards.length > 0 && visible.length !== cards.length && (
           <span className="text-xs text-white/40">
             Showing {visible.length} of {cards.length}
           </span>
@@ -158,6 +123,7 @@ export default function CollectionPage({ navigate }) {
             </button>
           </div>
         )}
+        {cards && cards.length > 0 && visible.length === 0 && <NoMatches onReset={filterState.reset} />}
 
         <div className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-x-5 gap-y-6">
           {visible.map((card) => (
@@ -169,11 +135,25 @@ export default function CollectionPage({ navigate }) {
             >
               <div className="relative transition duration-200 group-hover:-translate-y-1 group-hover:drop-shadow-[0_12px_24px_rgba(233,196,106,0.25)]">
                 <CardImage cardId={card.id} alt={card.name} />
+                {showLevel && levelBadge(card) && (
+                  <span className="absolute top-1.5 left-1.5 rounded-md bg-ink-950/90 px-2 py-0.5 text-sm font-bold text-gold-300 tabular-nums shadow">
+                    {levelBadge(card)}
+                  </span>
+                )}
                 <span className="absolute right-1.5 bottom-1.5 rounded-md border border-gold-300/40 bg-ink-950/90 px-2 py-0.5 text-sm font-bold text-gold-300 tabular-nums shadow">
                   ×{card.quantity}
                 </span>
               </div>
               <div className="mt-2 truncate text-xs text-white/75 group-hover:text-white">{card.name}</div>
+              {(sort === 'atk' || sort === 'def') && isMonster(card) && (
+                <div className="text-[11px] text-white/45 tabular-nums">
+                  <span className={sort === 'atk' ? 'text-gold-300' : ''}>ATK {statText(card.atk)}</span>
+                  {' / '}
+                  <span className={sort === 'def' ? 'text-gold-300' : ''}>
+                    {card.linkval != null ? `LINK ${card.linkval}` : `DEF ${statText(card.def)}`}
+                  </span>
+                </div>
+              )}
             </button>
           ))}
         </div>

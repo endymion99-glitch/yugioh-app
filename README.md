@@ -5,13 +5,13 @@ A desktop app for tracking your Yu-Gi-Oh! card collection and building decks dur
 ## Features
 
 - **Profile login.** Create a username and password on first launch. The password is stored as a bcrypt hash in the local database.
-- **Collection binder.** A grid of the cards you own with copy counts, a name filter, type filters and sorting. Click a card for full details or to change how many copies you have.
+- **Collection binder.** A grid of the cards you own with copy counts, a name filter, the same monster filters as the deck builder (below) and sorting by name, type, copies, ATK or DEF. Click a card for full details or to change how many copies you have.
 - **Imports.** Every import opens a review screen first, so you can fix anything before it's added:
   - **Screenshot (OCR):** upload, drag in or paste (Ctrl+V) a screenshot of your opened packs. The app finds each card in the grid, reads its name and any copy-count overlay, and matches the name against YGOprodeck.
   - **.txt file:** one card name per line. Repeated lines count as extra copies, and `3x Card Name` also works.
   - **.ydk file:** every passcode in `#main`, `#extra` and `!side` is imported. Alternate artworks map to the same card.
   - **Manual search:** live YGOprodeck search. It's also built into the review screen so you can add anything the import missed.
-- **Deck builder.** Click cards in your collection to add them. Fusion, Synchro, XYZ and Link monsters go to the Extra Deck automatically, and right-clicking a card puts it in the Side Deck. Your collection can be narrowed to one monster kind (Effect, Ritual, Fusion, Tuner, Pendulum…), Attribute (DARK, LIGHT…) and Type (Spellcaster, Dragon…), in any combination, and sorted by ATK or DEF, highest first. With **Monsters** selected you can also sort by level and show only chosen levels (for example 2, 3 and 4). The deck is checked as you build it:
+- **Deck builder.** Click cards in your collection to add them. Fusion, Synchro, XYZ and Link monsters go to the Extra Deck automatically, and right-clicking a card puts it in the Side Deck. Your collection can be narrowed to one monster kind (Effect, Ritual, Fusion, Tuner, Pendulum…), Attribute (DARK, LIGHT…) and Type (Spellcaster, Dragon…), in any combination, and sorted by ATK or DEF, highest first. With **Monsters** or **Extra** selected you can also sort by level and show only chosen levels, for example 2, 3 and 4 (on Extra, Xyz monsters match by Rank). When the filters hide every card, a reset button brings them all back. The deck is checked as you build it:
   - Main Deck 40–60, Extra Deck ≤ 15, Side Deck ≤ 15
   - at most 3 copies of a card across Main, Extra and Side
   - you can't add more copies than you own
