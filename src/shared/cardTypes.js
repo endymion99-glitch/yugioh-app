@@ -90,5 +90,35 @@ export function compareByStat(stat) {
   }
 }
 
+/** Monster attributes, as YGOprodeck spells them. */
+export const ATTRIBUTES = ['DARK', 'LIGHT', 'EARTH', 'WATER', 'FIRE', 'WIND', 'DIVINE']
+
+/** Monster types ("race" in YGOprodeck data). */
+export const MONSTER_RACES = [
+  'Aqua', 'Beast', 'Beast-Warrior', 'Creator-God', 'Cyberse', 'Dinosaur', 'Divine-Beast', 'Dragon',
+  'Fairy', 'Fiend', 'Fish', 'Illusion', 'Insect', 'Machine', 'Plant', 'Psychic', 'Pyro', 'Reptile',
+  'Rock', 'Sea Serpent', 'Spellcaster', 'Thunder', 'Warrior', 'Winged Beast', 'Wyrm', 'Zombie'
+]
+
+/** True for any monster card, Main or Extra Deck. */
+export const isMonster = (card) => ['monster', 'extra'].includes(cardCategory(card?.type))
+
+/** Monster levels the deck builder can filter by. */
+export const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+/**
+ * Sort comparator by level, 'desc' (highest first) or 'asc'. Equal levels
+ * compare as 0 so another comparator can break the tie; cards without a
+ * level go last.
+ */
+export function compareByLevel(direction) {
+  return (a, b) => {
+    const la = Number.isFinite(a.level) ? a.level : null
+    const lb = Number.isFinite(b.level) ? b.level : null
+    if (la === null || lb === null) return la === lb ? 0 : la === null ? 1 : -1
+    return direction === 'asc' ? la - lb : lb - la
+  }
+}
+
 export const CARD_IMAGE_CDN = 'https://images.ygoprodeck.com/images/cards'
 export const CARD_IMAGE_SMALL_CDN = 'https://images.ygoprodeck.com/images/cards_small'

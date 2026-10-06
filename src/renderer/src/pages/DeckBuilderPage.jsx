@@ -1,35 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api.js'
-import {
-  MONSTER_KINDS,
-  cardCategory,
-  compareByStat,
-  compareCards,
-  defaultSectionFor,
-  isExtraDeckType,
-  isMonsterKind
-} from '@shared/cardTypes.js'
+import { compareCards, defaultSectionFor, isExtraDeckType, isMonster } from '@shared/cardTypes.js'
+import { applyFilters, filterCounts, hasLevelFilters, levelBadge, statText } from '@shared/cardFilters.js'
 import { validateDeck, availableCopies, RULES } from '@shared/deckRules.js'
 import { useToast } from '../components/Toast.jsx'
 import CardImage from '../components/CardImage.jsx'
 import CardDetailModal from '../components/CardDetailModal.jsx'
 import PromptModal from '../components/PromptModal.jsx'
-
-const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'monster', label: 'Monsters' },
-  { id: 'extra', label: 'Extra' },
-  { id: 'spell', label: 'Spells' },
-  { id: 'trap', label: 'Traps' }
-]
-
-const SORTS = [
-  { id: 'type', label: 'Sort: Type', compare: compareCards },
-  { id: 'atk', label: 'Sort: ATK (high → low)', compare: compareByStat('atk') },
-  { id: 'def', label: 'Sort: DEF (high → low)', compare: compareByStat('def') }
-]
-
-const statText = (v) => (v === null || v === undefined ? '–' : v < 0 ? '?' : v)
+import CardFilterBar, { NoMatches, useCardFilters } from '../components/CardFilterBar.jsx'
 
 const SECTION_META = {
   main: { label: 'Main Deck', range: `${RULES.main.min}–${RULES.main.max}`, cols: 'grid-cols-10' },
@@ -58,10 +36,8 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
   const [collection, setCollection] = useState(null)
   const [entries, setEntries] = useState([])
   const [saved, setSaved] = useState([])
-  const [filter, setFilter] = useState('')
-  const [category, setCategory] = useState('all')
-  const [kind, setKind] = useState('')
-  const [sort, setSort] = useState('type')
+  const filterState = useCardFilters('type')
+  const { filters, sort } = filterState
   const [detail, setDetail] = useState(null)
   const [prompt, setPrompt] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -129,17 +105,12 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
     [validation]
   )
 
-  const visibleCollection = useMemo(() => {
-    const q = filter.trim().toLowerCase()
-    return (collection || [])
-      .filter(
-        (c) =>
-          (!q || c.name.toLowerCase().includes(q)) &&
-          (category === 'all' || cardCategory(c.type) === category) &&
-          (!kind || isMonsterKind(c, kind))
-      )
-      .sort(SORTS.find((s) => s.id === sort).compare)
-  }, [collection, filter, category, kind, sort])
+  const showLevel = hasLevelFilters(filters.category) && (!!filters.levelSort || filters.levels.length > 0)
+  const visibleCollection = useMemo(
+    () => applyFilters(collection || [], filters, sort),
+    [collection, filters, sort]
+  )
+  const filterOptionCounts = useMemo(() => filterCounts(collection || [], filters), [collection, filters])
 
   const sections = useMemo(() => {
     const out = { main: [], extra: [], side: [] }
@@ -319,55 +290,12 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
         {/* Left: collection */}
         <section className="flex w-[42%] min-w-[380px] flex-col border-r border-white/5">
           <div className="space-y-2 p-4">
-            <div className="flex gap-2">
-              <input
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                placeholder="Search your collection…"
-                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-ink-950/70 px-4 py-2 text-sm outline-none placeholder:text-white/30 focus:border-gold-400/60"
-              />
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-                className="rounded-lg border border-white/10 bg-ink-950/70 px-2 text-sm outline-none focus:border-gold-400/60"
-              >
-                {SORTS.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-1">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => {
-                    setCategory(f.id)
-                    if (f.id === 'spell' || f.id === 'trap') setKind('')
-                  }}
-                  className={`rounded-md px-2.5 py-1 text-xs ${category === f.id ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white'}`}
-                >
-                  {f.label}
-                </button>
-              ))}
-              <select
-                value={kind}
-                onChange={(e) => {
-                  setKind(e.target.value)
-                  if (e.target.value && (category === 'spell' || category === 'trap')) setCategory('all')
-                }}
-                className={`ml-auto rounded-md border bg-ink-950/70 px-2 py-1 text-xs outline-none focus:border-gold-400/60 ${kind ? 'border-gold-400/60 text-white' : 'border-white/10 text-white/60'}`}
-              >
-                <option value="">Any monster type</option>
-                {MONSTER_KINDS.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.label} monsters
-                  </option>
-                ))}
-              </select>
-            </div>
-            <p className="text-[11px] text-white/35">Click a card to add it · Right-click to add it to the Side Deck</p>
+            <CardFilterBar
+              state={filterState}
+              counts={filterOptionCounts}
+              sorts={['type', 'atk', 'def']}
+              hint="Click a card to add it · Right-click to add it to the Side Deck"
+            />
           </div>
           <div className="min-h-0 flex-1 overflow-auto px-4 pb-6">
             {collection.length === 0 && (
@@ -378,6 +306,7 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
                 </button>
               </p>
             )}
+            {collection.length > 0 && visibleCollection.length === 0 && <NoMatches onReset={filterState.reset} />}
             <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-3">
               {visibleCollection.map((card) => {
                 const left = availableCopies(card.id, entries, owned)
@@ -393,13 +322,18 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
                       title={`${card.name}${isExtraDeckType(card.type) ? ' (Extra Deck)' : ''}`}
                     >
                       <CardImage cardId={card.id} size="small" alt={card.name} />
+                      {showLevel && levelBadge(card) && (
+                        <span className="absolute top-1 left-1 rounded bg-ink-950/90 px-1.5 text-[11px] font-bold text-gold-300 tabular-nums">
+                          {levelBadge(card)}
+                        </span>
+                      )}
                       <span
                         className={`absolute right-1 bottom-6 rounded bg-ink-950/90 px-1.5 text-[11px] font-bold tabular-nums ${left === 0 ? 'text-white/50' : 'text-gold-300'}`}
                       >
                         {left}/{card.quantity}
                       </span>
                       <div className="mt-1 truncate text-[11px] text-white/60">{card.name}</div>
-                      {sort !== 'type' && ['monster', 'extra'].includes(cardCategory(card.type)) && (
+                      {sort !== 'type' && isMonster(card) && (
                         <div className="text-[10px] tabular-nums text-white/45">
                           <span className={sort === 'atk' ? 'text-gold-300' : ''}>ATK {statText(card.atk)}</span>
                           {' / '}
