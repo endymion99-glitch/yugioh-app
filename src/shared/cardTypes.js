@@ -90,6 +90,19 @@ export function compareByStat(stat) {
   }
 }
 
+/** Monster attributes, as YGOprodeck spells them. */
+export const ATTRIBUTES = ['DARK', 'LIGHT', 'EARTH', 'WATER', 'FIRE', 'WIND', 'DIVINE']
+
+/** Monster types ("race" in YGOprodeck data). */
+export const MONSTER_RACES = [
+  'Aqua', 'Beast', 'Beast-Warrior', 'Creator-God', 'Cyberse', 'Dinosaur', 'Divine-Beast', 'Dragon',
+  'Fairy', 'Fiend', 'Fish', 'Illusion', 'Insect', 'Machine', 'Plant', 'Psychic', 'Pyro', 'Reptile',
+  'Rock', 'Sea Serpent', 'Spellcaster', 'Thunder', 'Warrior', 'Winged Beast', 'Wyrm', 'Zombie'
+]
+
+/** True for any monster card, Main or Extra Deck. */
+export const isMonster = (card) => ['monster', 'extra'].includes(cardCategory(card?.type))
+
 /** Monster levels the deck builder can filter by. */
 export const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 

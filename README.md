@@ -11,7 +11,7 @@ A desktop app for tracking your Yu-Gi-Oh! card collection and building decks dur
   - **.txt file:** one card name per line. Repeated lines count as extra copies, and `3x Card Name` also works.
   - **.ydk file:** every passcode in `#main`, `#extra` and `!side` is imported. Alternate artworks map to the same card.
   - **Manual search:** live YGOprodeck search. It's also built into the review screen so you can add anything the import missed.
-- **Deck builder.** Click cards in your collection to add them. Fusion, Synchro, XYZ and Link monsters go to the Extra Deck automatically, and right-clicking a card puts it in the Side Deck. Your collection can be narrowed to one monster type (Effect, Ritual, Fusion, Tuner, Pendulum…) and sorted by ATK or DEF, highest first. With **Monsters** selected you can also sort by level and show only chosen levels (for example 2, 3 and 4). The deck is checked as you build it:
+- **Deck builder.** Click cards in your collection to add them. Fusion, Synchro, XYZ and Link monsters go to the Extra Deck automatically, and right-clicking a card puts it in the Side Deck. Your collection can be narrowed to one monster kind (Effect, Ritual, Fusion, Tuner, Pendulum…), Attribute (DARK, LIGHT…) and Type (Spellcaster, Dragon…), in any combination, and sorted by ATK or DEF, highest first. With **Monsters** selected you can also sort by level and show only chosen levels (for example 2, 3 and 4). The deck is checked as you build it:
   - Main Deck 40–60, Extra Deck ≤ 15, Side Deck ≤ 15
   - at most 3 copies of a card across Main, Extra and Side
   - you can't add more copies than you own

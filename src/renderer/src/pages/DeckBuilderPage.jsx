@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api.js'
 import {
+  ATTRIBUTES,
   MONSTER_KINDS,
+  MONSTER_RACES,
   cardCategory,
   compareByLevel,
   compareByStat,
   compareCards,
   defaultSectionFor,
   isExtraDeckType,
+  isMonster,
   isMonsterKind
 } from '@shared/cardTypes.js'
 import { validateDeck, availableCopies, RULES } from '@shared/deckRules.js'
@@ -64,6 +67,8 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
   const [category, setCategory] = useState('all')
   const [kind, setKind] = useState('')
   const [sort, setSort] = useState('type')
+  const [attribute, setAttribute] = useState('')
+  const [race, setRace] = useState('')
   // Level controls only show, and only apply, while "Monsters" is selected.
   const [levelSort, setLevelSort] = useState('')
   const [levels, setLevels] = useState([])
@@ -135,6 +140,10 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
   )
 
   const byLevel = category === 'monster'
+  const monsterTab = category === 'all' || category === 'monster' || category === 'extra'
+  const inTab = (c) => category === 'all' || cardCategory(c.type) === category
+  const matchesAttribute = (c) => !attribute || (isMonster(c) && c.attribute === attribute)
+  const matchesRace = (c) => !race || (isMonster(c) && c.race === race)
   const showLevel = byLevel && (!!levelSort || levels.length > 0)
 
   const visibleCollection = useMemo(() => {
@@ -145,12 +154,27 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
       .filter(
         (c) =>
           (!q || c.name.toLowerCase().includes(q)) &&
-          (category === 'all' || cardCategory(c.type) === category) &&
+          inTab(c) &&
           (!kind || isMonsterKind(c, kind)) &&
+          matchesAttribute(c) &&
+          matchesRace(c) &&
           (!byLevel || !levels.length || levels.includes(c.level))
       )
       .sort((a, b) => (byLevel && levelSort ? compareLevel(a, b) : 0) || compareBase(a, b))
-  }, [collection, filter, category, kind, sort, levelSort, levels])
+  }, [collection, filter, category, kind, attribute, race, sort, levelSort, levels])
+
+  // How many monsters in this tab each Attribute / Type would show, given the
+  // other of the two filters.
+  const [attributeCounts, raceCounts] = useMemo(() => {
+    const byAttribute = new Map()
+    const byRace = new Map()
+    for (const c of collection || []) {
+      if (!isMonster(c) || !inTab(c)) continue
+      if (matchesRace(c)) byAttribute.set(c.attribute, (byAttribute.get(c.attribute) || 0) + 1)
+      if (matchesAttribute(c)) byRace.set(c.race, (byRace.get(c.race) || 0) + 1)
+    }
+    return [byAttribute, byRace]
+  }, [collection, category, attribute, race])
 
   const levelCounts = useMemo(() => {
     const counts = new Map()
@@ -363,7 +387,11 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
                   key={f.id}
                   onClick={() => {
                     setCategory(f.id)
-                    if (f.id === 'spell' || f.id === 'trap') setKind('')
+                    if (f.id === 'spell' || f.id === 'trap') {
+                      setKind('')
+                      setAttribute('')
+                      setRace('')
+                    }
                   }}
                   className={`rounded-md px-2.5 py-1 text-xs ${category === f.id ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white'}`}
                 >
@@ -378,7 +406,7 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
                 }}
                 className={`ml-auto rounded-md border bg-ink-950/70 px-2 py-1 text-xs outline-none focus:border-gold-400/60 ${kind ? 'border-gold-400/60 text-white' : 'border-white/10 text-white/60'}`}
               >
-                <option value="">Any monster type</option>
+                <option value="">Any monster kind</option>
                 {MONSTER_KINDS.map((k) => (
                   <option key={k.id} value={k.id}>
                     {k.label} monsters
@@ -386,6 +414,45 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
                 ))}
               </select>
             </div>
+            {monsterTab && (
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={attribute}
+                  onChange={(e) => setAttribute(e.target.value)}
+                  className={`rounded-md border bg-ink-950/70 px-2 py-1 text-xs outline-none focus:border-gold-400/60 ${attribute ? 'border-gold-400/60 text-white' : 'border-white/10 text-white/60'}`}
+                >
+                  <option value="">Attribute: any</option>
+                  {ATTRIBUTES.map((a) => (
+                    <option key={a} value={a}>
+                      {a} ({attributeCounts.get(a) || 0})
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={race}
+                  onChange={(e) => setRace(e.target.value)}
+                  className={`rounded-md border bg-ink-950/70 px-2 py-1 text-xs outline-none focus:border-gold-400/60 ${race ? 'border-gold-400/60 text-white' : 'border-white/10 text-white/60'}`}
+                >
+                  <option value="">Type: any</option>
+                  {MONSTER_RACES.map((r) => (
+                    <option key={r} value={r}>
+                      {r} ({raceCounts.get(r) || 0})
+                    </option>
+                  ))}
+                </select>
+                {(attribute || race) && (
+                  <button
+                    onClick={() => {
+                      setAttribute('')
+                      setRace('')
+                    }}
+                    className="text-[11px] text-white/45 hover:text-white"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
             {byLevel && (
               <div className="flex items-center gap-2">
                 <select
