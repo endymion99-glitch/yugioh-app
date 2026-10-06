@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isExtraDeckType, defaultSectionFor, compareCards, compareByStat, isMonsterKind } from '../src/shared/cardTypes.js'
+import { isExtraDeckType, defaultSectionFor, compareCards, compareByStat, compareByLevel, isMonsterKind } from '../src/shared/cardTypes.js'
 import { validateDeck, availableCopies } from '../src/shared/deckRules.js'
 import { parseYdk, buildYdk } from '../src/shared/ydk.js'
 import { parseCardList } from '../src/shared/textImport.js'
@@ -56,6 +56,44 @@ describe('cardTypes', () => {
       [card('Trap Card', 'trap'), 'effect', false]
     ])('%o is %s: %s', (c, kind, expected) => {
       expect(isMonsterKind(c, kind)).toBe(expected)
+    })
+  })
+
+  describe('sorting by level', () => {
+    const cards = [
+      { name: 'Pot of Greed', type: 'Spell Card', level: null },
+      { name: 'Kuriboh', type: 'Effect Monster', level: 1, atk: 300 },
+      { name: 'Dark Magician', type: 'Normal Monster', level: 7, atk: 2500 },
+      { name: 'Celtic Guardian', type: 'Normal Monster', level: 4, atk: 1400 },
+      { name: 'Blue-Eyes White Dragon', type: 'Normal Monster', level: 8, atk: 3000 },
+      { name: 'Red-Eyes Black Dragon', type: 'Normal Monster', level: 7, atk: 2400 },
+      { name: 'Axe Raider', type: 'Normal Monster', level: 4, atk: 1700 }
+    ]
+    const sorted = (direction, tieBreak = compareCards) =>
+      [...cards].sort((a, b) => compareByLevel(direction)(a, b) || tieBreak(a, b)).map((c) => c.name)
+
+    it('puts the highest level first, cards without a level last', () => {
+      expect(sorted('desc')).toEqual([
+        'Blue-Eyes White Dragon',
+        'Dark Magician',
+        'Red-Eyes Black Dragon',
+        'Axe Raider',
+        'Celtic Guardian',
+        'Kuriboh',
+        'Pot of Greed'
+      ])
+    })
+
+    it('can go lowest first, with the other sort breaking ties', () => {
+      expect(sorted('asc', compareByStat('atk'))).toEqual([
+        'Kuriboh',
+        'Axe Raider', // level 4, higher ATK than Celtic Guardian
+        'Celtic Guardian',
+        'Dark Magician',
+        'Red-Eyes Black Dragon',
+        'Blue-Eyes White Dragon',
+        'Pot of Greed'
+      ])
     })
   })
 

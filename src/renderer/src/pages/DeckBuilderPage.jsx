@@ -3,6 +3,7 @@ import { api } from '../lib/api.js'
 import {
   MONSTER_KINDS,
   cardCategory,
+  compareByLevel,
   compareByStat,
   compareCards,
   defaultSectionFor,
@@ -14,6 +15,7 @@ import { useToast } from '../components/Toast.jsx'
 import CardImage from '../components/CardImage.jsx'
 import CardDetailModal from '../components/CardDetailModal.jsx'
 import PromptModal from '../components/PromptModal.jsx'
+import LevelPicker from '../components/LevelPicker.jsx'
 
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -62,6 +64,9 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
   const [category, setCategory] = useState('all')
   const [kind, setKind] = useState('')
   const [sort, setSort] = useState('type')
+  // Level controls only show, and only apply, while "Monsters" is selected.
+  const [levelSort, setLevelSort] = useState('')
+  const [levels, setLevels] = useState([])
   const [detail, setDetail] = useState(null)
   const [prompt, setPrompt] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -129,17 +134,31 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
     [validation]
   )
 
+  const byLevel = category === 'monster'
+  const showLevel = byLevel && (!!levelSort || levels.length > 0)
+
   const visibleCollection = useMemo(() => {
     const q = filter.trim().toLowerCase()
+    const compareBase = SORTS.find((s) => s.id === sort).compare
+    const compareLevel = compareByLevel(levelSort)
     return (collection || [])
       .filter(
         (c) =>
           (!q || c.name.toLowerCase().includes(q)) &&
           (category === 'all' || cardCategory(c.type) === category) &&
-          (!kind || isMonsterKind(c, kind))
+          (!kind || isMonsterKind(c, kind)) &&
+          (!byLevel || !levels.length || levels.includes(c.level))
       )
-      .sort(SORTS.find((s) => s.id === sort).compare)
-  }, [collection, filter, category, kind, sort])
+      .sort((a, b) => (byLevel && levelSort ? compareLevel(a, b) : 0) || compareBase(a, b))
+  }, [collection, filter, category, kind, sort, levelSort, levels])
+
+  const levelCounts = useMemo(() => {
+    const counts = new Map()
+    for (const c of collection || []) {
+      if (cardCategory(c.type) === 'monster' && Number.isFinite(c.level)) counts.set(c.level, (counts.get(c.level) || 0) + 1)
+    }
+    return counts
+  }, [collection])
 
   const sections = useMemo(() => {
     const out = { main: [], extra: [], side: [] }
@@ -367,6 +386,20 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
                 ))}
               </select>
             </div>
+            {byLevel && (
+              <div className="flex items-center gap-2">
+                <select
+                  value={levelSort}
+                  onChange={(e) => setLevelSort(e.target.value)}
+                  className={`rounded-md border bg-ink-950/70 px-2 py-1 text-xs outline-none focus:border-gold-400/60 ${levelSort ? 'border-gold-400/60 text-white' : 'border-white/10 text-white/60'}`}
+                >
+                  <option value="">Level order: off</option>
+                  <option value="desc">Level: high → low</option>
+                  <option value="asc">Level: low → high</option>
+                </select>
+                <LevelPicker selected={levels} onChange={setLevels} counts={levelCounts} />
+              </div>
+            )}
             <p className="text-[11px] text-white/35">Click a card to add it · Right-click to add it to the Side Deck</p>
           </div>
           <div className="min-h-0 flex-1 overflow-auto px-4 pb-6">
@@ -393,6 +426,11 @@ export default function DeckBuilderPage({ deckId, navigate, registerGuard }) {
                       title={`${card.name}${isExtraDeckType(card.type) ? ' (Extra Deck)' : ''}`}
                     >
                       <CardImage cardId={card.id} size="small" alt={card.name} />
+                      {showLevel && Number.isFinite(card.level) && (
+                        <span className="absolute top-1 left-1 rounded bg-ink-950/90 px-1.5 text-[11px] font-bold text-gold-300 tabular-nums">
+                          ★{card.level}
+                        </span>
+                      )}
                       <span
                         className={`absolute right-1 bottom-6 rounded bg-ink-950/90 px-1.5 text-[11px] font-bold tabular-nums ${left === 0 ? 'text-white/50' : 'text-gold-300'}`}
                       >

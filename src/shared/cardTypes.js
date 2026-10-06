@@ -90,5 +90,22 @@ export function compareByStat(stat) {
   }
 }
 
+/** Monster levels the deck builder can filter by. */
+export const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+/**
+ * Sort comparator by level, 'desc' (highest first) or 'asc'. Equal levels
+ * compare as 0 so another comparator can break the tie; cards without a
+ * level go last.
+ */
+export function compareByLevel(direction) {
+  return (a, b) => {
+    const la = Number.isFinite(a.level) ? a.level : null
+    const lb = Number.isFinite(b.level) ? b.level : null
+    if (la === null || lb === null) return la === lb ? 0 : la === null ? 1 : -1
+    return direction === 'asc' ? la - lb : lb - la
+  }
+}
+
 export const CARD_IMAGE_CDN = 'https://images.ygoprodeck.com/images/cards'
 export const CARD_IMAGE_SMALL_CDN = 'https://images.ygoprodeck.com/images/cards_small'
