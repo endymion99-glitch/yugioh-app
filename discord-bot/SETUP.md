@@ -116,6 +116,14 @@ https://yugioh-tournament-bot.<your-subdomain>.workers.dev
 Copy that address. Open it in your browser: you should see
 **"Yu-Gi-Oh tournament bot is running."**
 
+> **Getting `ERR_SSL_VERSION_OR_CIPHER_MISMATCH` or "can't provide a secure
+> connection"?** That's normal right after you create a brand-new
+> `workers.dev` subdomain. Cloudflare is still issuing its security
+> certificate, which usually takes a few minutes and occasionally up to a
+> day. Wait about 10 to 15 minutes and try again. Nothing is wrong with your
+> setup. Don't do step 6 until the page loads, because Discord can't
+> connect until the certificate is ready either.
+
 ## 6. Connect Discord to the bot
 
 1. Back in the Discord Developer Portal, open your application and go to
