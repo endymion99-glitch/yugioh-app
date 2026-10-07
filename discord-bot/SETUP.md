@@ -203,7 +203,7 @@ the admin role through its own messages, so it doesn't need the broad
    ```
    npm run register
    ```
-   It should print `Registered 1 command(s): /ping`.
+   It should print `Registered N command(s): ...` with the list of commands.
 
 **Run `npm run register` again whenever a new version of the bot adds
 commands.**
@@ -221,8 +221,67 @@ saved.
 
 ---
 
-*More steps (admin role, channel, players, first tournament) will be added
-here as those features are built.*
+## 10. Set up the admin role and the tournament channel
+
+1. **Create the admin role.** In Discord, open **Server Settings** →
+   **Roles** → **Create Role**. Name it **Tournament Admin**.
+   - On the role's **Display** tab, turn on **Allow anyone to @mention this
+     role**. The bot pings this role when a result is disputed, and it can
+     only ping roles that allow it.
+   - Save, then give the role to yourself (and any other admins): **Server
+     Settings** → **Members** → click a member → **+** under Roles.
+2. **Pick (or create) the tournament channel**, for example `#tournament`.
+   If the channel is private, add the bot to it: open the channel's
+   settings → **Permissions** → **Add members or roles** → pick the bot, and
+   allow **View Channel**, **Send Messages** and **Embed Links**.
+3. In any channel, run:
+   ```
+   /config admin-role role:@Tournament Admin
+   /config channel channel:#tournament
+   ```
+   Only someone with **Manage Server** (or Administrator, or the server
+   owner) can run `/config admin-role`. After that, every admin command
+   needs the Tournament Admin role.
+
+The bot's replies to admin commands are private: only you see them.
+
+## 11. Add the 8 players
+
+For each of the 8 players, run:
+
+```
+/player add user:@TheirDiscordName name:TheirPlayerName
+```
+
+The name is what the bot shows in brackets and standings. After the 8th
+player, the bot says the roster is complete. Check the roster with
+`/player list`.
+
+These 8 players stay active for every future tournament. If you ever need to
+change someone:
+
+- `/player swap old:@Leaving new:@Joining name:NewName` replaces a player.
+  This also works in the middle of a tournament: the new player takes over
+  the matches the old player hasn't played yet. Results already played stay
+  with the old player, and the new player's stats start fresh.
+- `/player remove user:@Someone` removes a player between tournaments. It's
+  refused while they're in a tournament; use swap instead. Their history is
+  kept either way.
+
+## Changing match formats
+
+By default every match is Best of 1, except the Final (1st/2nd), which is
+Best of 3. To change a stage for future tournaments:
+
+```
+/config format stage:3rd/4th Place Match best_of:Best of 3
+```
+
+Add `apply_to_current:True` to also change that stage's matches in the
+current tournament that don't have a result yet.
+
+*More steps (the first tournament) will be added here as those features
+are built.*
 
 ## Redeploying after changes
 

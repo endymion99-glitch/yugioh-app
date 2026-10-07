@@ -23,6 +23,7 @@ src/
                    bracket.ts (12-match bracket, results, recalculation),
                    draw.ts (random pairs), points.ts (points, rewards, standings)
   commands/        One file per slash command
+  db/              Database queries (D1)
 migrations/        D1 database schema (SQL), applied in order
 scripts/
   register-commands.ts

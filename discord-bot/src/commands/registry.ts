@@ -1,6 +1,8 @@
 import type { Env } from '../env'
 import type { Interaction } from '../discord/types'
+import { config } from './config'
 import { ping } from './ping'
+import { player } from './player'
 
 export interface CommandContext {
   interaction: Interaction
@@ -18,7 +20,7 @@ export interface Command {
   handle(c: CommandContext): Promise<Response> | Response
 }
 
-export const commands: Command[] = [ping]
+export const commands: Command[] = [ping, config, player]
 
 export function findCommand(name: string | undefined): Command | undefined {
   return commands.find((c) => c.definition.name === name)

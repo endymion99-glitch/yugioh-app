@@ -3,6 +3,7 @@ import { ephemeral, json } from './discord/responses'
 import { InteractionType, ResponseType, type Interaction } from './discord/types'
 import { verifyDiscordSignature } from './discord/verify'
 import type { Env } from './env'
+import { TournamentError } from './logic/errors'
 
 export async function handleInteraction(
   interaction: Interaction,
@@ -16,7 +17,13 @@ export async function handleInteraction(
     case InteractionType.APPLICATION_COMMAND: {
       const command = findCommand(interaction.data?.name)
       if (!command) return ephemeral("Sorry, I don't know that command.")
-      return command.handle({ interaction, env, ctx })
+      try {
+        return await command.handle({ interaction, env, ctx })
+      } catch (err) {
+        // Expected problems (not in this match, not an admin...) are shown to the user as-is.
+        if (err instanceof TournamentError) return ephemeral(err.message)
+        throw err
+      }
     }
 
     default:
