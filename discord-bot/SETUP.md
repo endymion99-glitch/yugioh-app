@@ -293,7 +293,9 @@ pairings by hand:
    meet in Winners' Semi A, the Match 3 and Match 4 winners in Winners' Semi
    B).
 3. Press Enter. The bot creates **Tournament #1** and posts the pairings in
-   the tournament channel, tagging all 8 players.
+   the tournament channel. This post is **silent**: the players' names show
+   as @mentions, but nobody gets a notification. To notify them, also set
+   the optional `ping_players` box to `True`.
 
 *Entering results for matches that were already played (`/result override`)
 comes in the next build step.*

@@ -121,7 +121,7 @@ describe('/draw', () => {
 })
 
 describe('/tournament create-manual', () => {
-  it('creates tournament #1 from the given pairings and posts them, tagging everyone', async () => {
+  it('creates tournament #1 from the given pairings and posts them silently', async () => {
     const env = await readyServer()
     const r = await run(env, admin, 'tournament', 'create-manual', manualSeats)
     expect(r.ephemeral).toBe(true)
@@ -136,7 +136,16 @@ describe('/tournament create-manual', () => {
 
     const post = discord.find(`/channels/${TOURNAMENT_CHANNEL}/messages`, 'POST')[0]
     expect(post.body.content).toContain('**Match 1:** <@u1> vs <@u2>')
+    expect(post.body.allowed_mentions).toEqual({ parse: [] }) // shown as mentions, but nobody is pinged
+    expect(r.content).toMatch(/silently, nobody was notified/)
+  })
+
+  it('pings the players when ping_players is set', async () => {
+    const env = await readyServer()
+    const r = await run(env, admin, 'tournament', 'create-manual', { ...manualSeats, ping_players: true })
+    const post = discord.find(`/channels/${TOURNAMENT_CHANNEL}/messages`, 'POST')[0]
     expect(post.body.allowed_mentions.users).toHaveLength(8)
+    expect(r.content).toMatch(/the players were notified/)
   })
 
   it('refuses duplicates and people who are not active players', async () => {

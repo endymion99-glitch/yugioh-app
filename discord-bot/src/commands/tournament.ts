@@ -23,12 +23,19 @@ export const tournament: Command = {
         type: OptionType.SUB_COMMAND,
         name: 'create-manual',
         description: 'Create a tournament from pairings you choose (no random draw)',
-        options: SEATS.map((seat) => ({
-          type: OptionType.USER,
-          name: seat,
-          description: `Round 1 Match ${seat[1]}, player ${seat[4]}`,
-          required: true
-        }))
+        options: [
+          ...SEATS.map((seat) => ({
+            type: OptionType.USER,
+            name: seat,
+            description: `Round 1 Match ${seat[1]}, player ${seat[4]}`,
+            required: true
+          })),
+          {
+            type: OptionType.BOOLEAN,
+            name: 'ping_players',
+            description: 'Notify the players about the pairings post (default: no, the post is silent)'
+          }
+        ]
       }
     ]
   },
@@ -58,12 +65,12 @@ export const tournament: Command = {
 
     const { tournament: t, matches } = await createTournament(env.DB, pairs)
     const lookup = new Map(players.map((p) => [p.id, p]))
-    let note = `Pairings posted in ${mentionChannel(channelId)}.`
+    let note = `Pairings posted in ${mentionChannel(channelId)}${options.ping_players ? ', and the players were notified' : ' (silently, nobody was notified)'}.`
     try {
-      await discordApi(env).createMessage(
-        channelId,
-        round1Announcement(t.number, pairs, lookup, `📋 **Tournament #${t.number}** has been set up with these pairings:`)
-      )
+      const post = round1Announcement(t.number, pairs, lookup, `📋 **Tournament #${t.number}** has been set up with these pairings:`)
+      // Silent by default: names still show as mentions, but nobody is notified.
+      if (!options.ping_players) post.allowed_mentions = { parse: [] }
+      await discordApi(env).createMessage(channelId, post)
       await markAnnounced(env.DB, matches.filter((m) => m.status === 'ready').map((m) => m.id))
     } catch (err) {
       console.error('Posting manual pairings failed', err)
