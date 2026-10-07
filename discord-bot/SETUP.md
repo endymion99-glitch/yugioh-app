@@ -330,6 +330,19 @@ notified.
 If a player reports by mistake, either player can simply `/report` again
 before it's confirmed: the new report replaces the old one.
 
+## Commands for everyone
+
+| Command | What it shows |
+|---|---|
+| `/mymatch` | Your current match and opponent, and what to do next (private) |
+| `/bracket` | All 12 matches of the current tournament and their status. Add `tournament:<number>` for an older one |
+| `/standings` | The overall leaderboard: points, place counts (🥇×2 …) and tournaments played |
+| `/history` | Finished tournaments with their podium, 10 per page (`page:2` for more). `/history tournament:<number>` opens one in detail |
+| `/stats` | A player's points and rank, tournaments played, best and average place, match and game record, placement counts, and head-to-head against everyone they've played. `/stats player:@someone` for someone else |
+
+These replies are visible to the channel (except `/mymatch`) but never ping
+anyone.
+
 ## When a tournament ends
 
 As soon as the 12th match is confirmed, the bot:

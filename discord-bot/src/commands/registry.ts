@@ -2,6 +2,7 @@ import type { Env } from '../env'
 import type { Interaction } from '../discord/types'
 import { config } from './config'
 import { draw } from './draw'
+import { bracket, history, mymatch, standings, stats } from './info'
 import { ping } from './ping'
 import { player } from './player'
 import { report } from './report'
@@ -25,7 +26,22 @@ export interface Command {
   handle(c: CommandContext): Promise<Response> | Response
 }
 
-export const commands: Command[] = [ping, config, player, draw, tournament, report, result, points, rewards]
+export const commands: Command[] = [
+  ping,
+  config,
+  player,
+  draw,
+  tournament,
+  report,
+  result,
+  points,
+  rewards,
+  bracket,
+  mymatch,
+  standings,
+  history,
+  stats
+]
 
 export function findCommand(name: string | undefined): Command | undefined {
   return commands.find((c) => c.definition.name === name)
