@@ -1,0 +1,7 @@
+# Cloudflare Workers configuration. See SETUP.md for what each part is for.
+name = "yugioh-tournament-bot"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# Secrets (DISCORD_PUBLIC_KEY, DISCORD_APPLICATION_ID, DISCORD_BOT_TOKEN) are
+# NOT stored here. Set them with `npx wrangler secret put <NAME>`.
