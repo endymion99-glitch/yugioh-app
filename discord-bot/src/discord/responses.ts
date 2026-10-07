@@ -1,7 +1,7 @@
 import { MessageFlags, ResponseType, type MessagePayload } from './types'
 
 // No pings unless a caller explicitly lists who may be mentioned.
-export const NO_MENTIONS = { parse: [] }
+export const NO_MENTIONS: { parse: [] } = { parse: [] }
 
 export function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -21,4 +21,9 @@ export function reply(message: MessagePayload | string, opts: { ephemeral?: bool
 /** A private reply only the person who ran the command can see. */
 export function ephemeral(message: MessagePayload | string): Response {
   return reply(message, { ephemeral: true })
+}
+
+/** "Bot is thinking..." while work continues in the background (up to 15 minutes to edit it). */
+export function deferred(opts: { ephemeral?: boolean } = {}): Response {
+  return json({ type: ResponseType.DEFERRED_CHANNEL_MESSAGE, data: opts.ephemeral ? { flags: MessageFlags.EPHEMERAL } : {} })
 }

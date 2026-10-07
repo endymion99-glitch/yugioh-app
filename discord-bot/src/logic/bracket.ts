@@ -12,6 +12,9 @@
 import { TournamentError } from './errors'
 
 export type PlayerId = number
+
+/** Every tournament has exactly this many players. */
+export const TOURNAMENT_SIZE = 8
 export type BestOf = 1 | 3
 export type Stage = 'R1' | 'WS' | 'LS' | 'P1' | 'P3' | 'P5' | 'P7'
 export type Slot = 'M1' | 'M2' | 'M3' | 'M4' | 'WA' | 'WB' | 'LA' | 'LB' | 'P1' | 'P3' | 'P5' | 'P7'

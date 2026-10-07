@@ -280,8 +280,37 @@ Best of 3. To change a stage for future tournaments:
 Add `apply_to_current:True` to also change that stage's matches in the
 current tournament that don't have a result yet.
 
-*More steps (the first tournament) will be added here as those features
-are built.*
+## 12. Start the first tournament
+
+Your first tournament was already drawn outside the bot, so enter its
+pairings by hand:
+
+1. Type `/tournament` and pick **`/tournament create-manual`**.
+2. Fill in the 8 boxes: `m1_p1` and `m1_p2` are the two players of Round 1
+   Match 1, `m2_p1` and `m2_p2` are Match 2, and so on. Each box lets you
+   pick a server member. Pick the players exactly as they were drawn: the
+   bracket depends on which match is which (the Match 1 and Match 2 winners
+   meet in Winners' Semi A, the Match 3 and Match 4 winners in Winners' Semi
+   B).
+3. Press Enter. The bot creates **Tournament #1** and posts the pairings in
+   the tournament channel, tagging all 8 players.
+
+*Entering results for matches that were already played (`/result override`)
+comes in the next build step.*
+
+### Later tournaments: `/draw`
+
+When no tournament is running, an admin can start one with **`/draw`**. The
+bot shuffles the 8 players into 4 random pairs and reveals them one match at
+a time in the tournament channel (about 12 seconds), then tags everyone.
+Normally you won't need it: once a tournament finishes, the bot draws the
+next one automatically.
+
+- If you run `/draw` in the tournament channel, the reveal appears right
+  there. If you run it anywhere else, the reveal still goes to the tournament
+  channel and you get a private "drawn in #tournament" note.
+- If the bot can't post in the tournament channel (missing permissions), it
+  tells you, and no tournament is created, so you can fix it and try again.
 
 ## Redeploying after changes
 

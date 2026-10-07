@@ -47,7 +47,7 @@ describe('/player add', () => {
     await run(env, admin, 'player', 'add', { user: 'u1', name: 'Kaiba' })
     expect((await run(env, admin, 'player', 'add', { user: 'u1', name: 'Other' })).content).toMatch(/already linked/)
     expect((await run(env, admin, 'player', 'add', { user: 'u2', name: 'kaiba' })).content).toMatch(/already an active player called/)
-    expect((await run(env, admin, 'player', 'add', { user: 'bot1', name: 'Robo' }, ['bot1'])).content).toMatch(/Bots/)
+    expect((await run(env, admin, 'player', 'add', { user: 'bot1', name: 'Robo' }, { bots: ['bot1'] })).content).toMatch(/Bots/)
     expect((await run(env, admin, 'player', 'add', { user: 'u3', name: '   ' })).content).toMatch(/give the player a name/)
   })
 

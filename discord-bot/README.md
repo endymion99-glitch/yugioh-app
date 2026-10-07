@@ -24,8 +24,11 @@ src/
                    draw.ts (random pairs), points.ts (points, rewards, standings)
   commands/        One file per slash command
   db/              Database queries (D1)
+  services/        Steps that combine database and Discord (draw, announcements)
+  views/           What the bot's messages look like
 migrations/        D1 database schema (SQL), applied in order
 scripts/
   register-commands.ts
-test/              Tests; test/helpers/d1.ts runs the migrations on in-memory SQLite
+test/              Tests. helpers/d1.ts runs the migrations on in-memory SQLite;
+                   helpers/fakeDiscord.ts records every Discord API call
 ```

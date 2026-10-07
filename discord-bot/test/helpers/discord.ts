@@ -32,7 +32,8 @@ export function makeEnv(publicKey: string): Env {
     DB: createTestDb(),
     DISCORD_PUBLIC_KEY: publicKey,
     DISCORD_APPLICATION_ID: 'app-id',
-    DISCORD_BOT_TOKEN: 'bot-token'
+    DISCORD_BOT_TOKEN: 'bot-token',
+    REVEAL_DELAY_MS: '0'
   }
 }
 

@@ -13,11 +13,11 @@ import { parseCommand, resolvedUser } from '../discord/options'
 import { requireAdmin, requireGuild } from '../discord/permissions'
 import { ephemeral } from '../discord/responses'
 import { OptionType, type Interaction } from '../discord/types'
-import { SLOTS, swapPlayer } from '../logic/bracket'
+import { SLOTS, TOURNAMENT_SIZE, swapPlayer, type Slot } from '../logic/bracket'
 import { TournamentError } from '../logic/errors'
-import type { Command } from './registry'
+import { announceMatches } from '../services/announce'
+import type { Command, CommandContext } from './registry'
 
-export const TOURNAMENT_SIZE = 8
 const NAME_MAX = 32
 
 const nameOption = (description: string) => ({
@@ -80,7 +80,9 @@ async function addPlayer(db: D1Database, interaction: Interaction, userId: strin
   return ephemeral(`Added ${playerLabel({ name, discord_user_id: userId })}. Active players: ${count}/${TOURNAMENT_SIZE}. ${next}`)
 }
 
-async function swap(db: D1Database, interaction: Interaction, oldUserId: string, newUserId: string, rawName: unknown) {
+async function swap(c: CommandContext, oldUserId: string, newUserId: string, rawName: unknown) {
+  const { interaction, env, ctx } = c
+  const db = env.DB
   const name = cleanName(rawName)
   const old = await requireActivePlayer(db, oldUserId)
   if (oldUserId === newUserId) throw new TournamentError('The new player must be a different Discord user.')
@@ -96,6 +98,7 @@ async function swap(db: D1Database, interaction: Interaction, oldUserId: string,
 
   const statements = [deactivatePlayerStatement(db, old.id)]
   let tournamentNote = ''
+  let toAnnounce: Slot[] = []
   const current = await getCurrentTournament(db)
   if (current) {
     const before = await loadMatches(db, current.id)
@@ -103,6 +106,7 @@ async function swap(db: D1Database, interaction: Interaction, oldUserId: string,
       const after = swapPlayer(before, old.id, newId)
       statements.push(...matchUpdateStatements(db, before, after), insertSubstitutionStatement(db, current.id, old.id, newId))
       const takenOver = after.filter((m) => m.status !== 'confirmed' && (m.player1 === newId || m.player2 === newId))
+      toAnnounce = takenOver.filter((m) => m.status === 'ready').map((m) => m.slot)
       tournamentNote = takenOver.length
         ? `\nIn Tournament #${current.number} they take over: ${takenOver.map((m) => SLOTS[m.slot].name).join(', ')}.`
         : `\nThey take ${escapeMarkdown(old.name)}'s place in Tournament #${current.number} for any matches still to come.`
@@ -113,6 +117,10 @@ async function swap(db: D1Database, interaction: Interaction, oldUserId: string,
   } catch (err) {
     await db.prepare('DELETE FROM players WHERE id = ?').bind(newId).run()
     throw err
+  }
+  // Let the replacement and their opponent know about a match they can play now.
+  if (current && toAnnounce.length) {
+    ctx.waitUntil(announceMatches(env, current, toAnnounce).catch((err) => console.error('Announcing swap failed', err)))
   }
   return ephemeral(
     `${playerLabel(newPlayer)} replaced ${playerLabel(old)}. ${escapeMarkdown(old.name)}'s results and stats are kept on their own record.${tournamentNote}`
@@ -178,7 +186,8 @@ export const player: Command = {
     ]
   },
 
-  async handle({ interaction, env }) {
+  async handle(c) {
+    const { interaction, env } = c
     requireGuild(interaction)
     requireAdmin(interaction, await getConfig(env.DB, 'admin_role_id'))
     const { sub, options } = parseCommand(interaction)
@@ -186,7 +195,7 @@ export const player: Command = {
       case 'add':
         return addPlayer(env.DB, interaction, String(options.user), options.name)
       case 'swap':
-        return swap(env.DB, interaction, String(options.old), String(options.new), options.name)
+        return swap(c, String(options.old), String(options.new), options.name)
       case 'remove':
         return remove(env.DB, String(options.user))
       case 'list':

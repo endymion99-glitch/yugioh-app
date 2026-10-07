@@ -6,4 +6,6 @@ export interface Env {
   DISCORD_PUBLIC_KEY: string
   DISCORD_APPLICATION_ID: string
   DISCORD_BOT_TOKEN: string
+  /** Pause between steps of the draw reveal, in milliseconds. Tests set it to 0. */
+  REVEAL_DELAY_MS?: string
 }

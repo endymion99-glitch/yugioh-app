@@ -23,6 +23,15 @@ export interface Reply {
   content: string
   ephemeral: boolean
   data: any
+  /** Resolves when the work the bot continues after replying (ctx.waitUntil) is done. */
+  done: Promise<unknown>
+}
+
+export interface RunOptions {
+  /** User ids that should look like bots. */
+  bots?: string[]
+  /** The channel the command is run in. */
+  channel?: string
 }
 
 export function makeTestEnv(): Env {
@@ -39,7 +48,7 @@ export async function run(
   name: string,
   sub: string | null,
   options: Record<string, string | number | boolean> = {},
-  bots: string[] = []
+  { bots = [], channel = 'chan' }: RunOptions = {}
 ): Promise<Reply> {
   const opts = Object.entries(options).map(([n, value]) => ({ name: n, type: OptionType.STRING, value }))
   const users: Record<string, any> = {}
@@ -52,7 +61,7 @@ export async function run(
     type: InteractionType.APPLICATION_COMMAND,
     token: 'tok',
     guild_id: GUILD,
-    channel_id: 'chan',
+    channel_id: channel,
     member: { user: { id: actor.id, username: actor.id }, roles: actor.roles ?? [], permissions: actor.permissions ?? '0' },
     data: {
       name,
@@ -60,9 +69,11 @@ export async function run(
       resolved: { users }
     }
   }
-  const res = await handleInteraction(interaction, env, makeCtx())
+  const ctx = makeCtx()
+  const res = await handleInteraction(interaction, env, ctx)
   const body = (await res.json()) as any
   return {
+    done: Promise.all(ctx.pending),
     type: body.type,
     content: body.data?.content ?? '',
     ephemeral: Boolean((body.data?.flags ?? 0) & MessageFlags.EPHEMERAL),
@@ -74,6 +85,14 @@ export async function run(
 export async function setupAdmin(env: Env) {
   await run(env, owner, 'config', 'admin-role', { role: ADMIN_ROLE })
 }
+
+/** Sets the admin role and the tournament channel. */
+export async function setupServer(env: Env, channel = TOURNAMENT_CHANNEL) {
+  await setupAdmin(env)
+  await run(env, admin, 'config', 'channel', { channel })
+}
+
+export const TOURNAMENT_CHANNEL = 'tournament-channel'
 
 /** Adds players u1..u8 named P1..P8. */
 export async function addEightPlayers(env: Env) {
