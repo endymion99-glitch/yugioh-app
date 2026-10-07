@@ -83,7 +83,12 @@ export const revealDelay = (env: Env) => {
   return Number.isFinite(ms) && ms >= 0 ? ms : 2500
 }
 
-/** Plays the reveal: intro, one Round 1 match per step, then a message tagging everyone (~12 seconds). */
+/**
+ * Plays the reveal: intro, one Round 1 match per step, then a message tagging
+ * everyone. With the default 2.5 s pause that's 5 pauses, about 12.5 s, which
+ * stays well inside the ~30 s Cloudflare lets ctx.waitUntil work run after
+ * replying, even when the end-of-tournament summary is posted first.
+ */
 export async function playReveal(env: Env, target: RevealTarget, drawn: DrawnTournament): Promise<void> {
   const { tournament, pairs, players } = drawn
   const delay = revealDelay(env)

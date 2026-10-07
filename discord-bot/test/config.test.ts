@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getConfig, getStageFormats } from '../src/db/config'
+import { discord } from './helpers/fakeDiscord'
 import { ADMIN_ROLE, GUILD, admin, makeTestEnv, member, owner, run, setupAdmin } from './helpers/interactions'
 
 describe('/config admin-role', () => {
@@ -46,11 +47,21 @@ describe('admin-only commands', () => {
 })
 
 describe('/config channel', () => {
-  it('stores the tournament channel', async () => {
+  it('stores the tournament channel and posts a hello there', async () => {
     const env = makeTestEnv()
     await setupAdmin(env)
     const r = await run(env, admin, 'config', 'channel', { channel: 'c1' })
-    expect(r.content).toBe('Done. Tournament posts will go to <#c1>.')
+    expect(r.content).toBe('Done. Tournament posts will go to <#c1>. I posted a short hello there.')
+    expect(await getConfig(env.DB, 'channel_id')).toBe('c1')
+    expect(discord.find('/channels/c1/messages', 'POST')).toHaveLength(1)
+  })
+
+  it('warns right away when the bot cannot post in that channel', async () => {
+    const env = makeTestEnv()
+    await setupAdmin(env)
+    discord.fail((c) => c.path.startsWith('/channels/c1'))
+    const r = await run(env, admin, 'config', 'channel', { channel: 'c1' })
+    expect(r.content).toMatch(/Saved: tournament posts will go to <#c1>. But I couldn't post a test message there: I don't have permission/)
     expect(await getConfig(env.DB, 'channel_id')).toBe('c1')
   })
 })

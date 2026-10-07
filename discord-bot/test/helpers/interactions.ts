@@ -3,6 +3,7 @@ import { handleInteraction } from '../../src/index'
 import type { Env } from '../../src/env'
 import { InteractionType, MessageFlags, OptionType } from '../../src/discord/types'
 import { makeCtx, makeEnv } from './discord'
+import { discord } from './fakeDiscord'
 
 export const GUILD = 'guild-1'
 export const ADMIN_ROLE = 'role-admin'
@@ -90,6 +91,7 @@ export async function setupAdmin(env: Env) {
 export async function setupServer(env: Env, channel = TOURNAMENT_CHANNEL) {
   await setupAdmin(env)
   await run(env, admin, 'config', 'channel', { channel })
+  discord.reset() // forget the "hello" post, so tests only see what they do themselves
 }
 
 export const TOURNAMENT_CHANNEL = 'tournament-channel'

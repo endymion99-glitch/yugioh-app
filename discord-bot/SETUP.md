@@ -1,19 +1,36 @@
-# Setting up the tournament bot (beginner guide)
+# Tournament bot: beginner guide
 
-This guide takes you from nothing to a working bot on your Discord server.
-Everything here is **free**: the Cloudflare Workers free plan and Discord
-bots cost nothing, and you don't need to enter a credit card.
+This guide takes you from nothing to a working bot on your Discord server,
+and then explains how to run tournaments with it. Everything here is
+**free**: the Cloudflare Workers free plan and Discord bots cost nothing,
+and you don't need to enter a credit card.
 
-You'll type commands into a terminal. On Windows, open **Windows Terminal**
-or **PowerShell**. On Mac, open **Terminal**. Lines in grey boxes are commands:
-type or paste them and press Enter.
+- **Part 1: Setup** (once): steps 1 to 12.
+- **Part 2: Running tournaments**: reporting, corrections, settings.
+- **Part 3: Maintenance**: updating, backups, troubleshooting.
+
+You'll type commands into a terminal. On Windows, open **Command Prompt**,
+**Windows Terminal** or **PowerShell**. On Mac, open **Terminal**. Lines in
+grey boxes are commands: type or paste them and press Enter.
 
 > **How it works, in one paragraph.** When someone uses a slash command,
 > Discord sends a web request to your bot's address on Cloudflare. Cloudflare
 > runs the bot's code for a moment, the bot answers, and then it goes back to
-> sleep. Nothing runs on your own computer, so your laptop can be off.
+> sleep. Nothing runs on your own computer, so your laptop can be off. All
+> data lives in a small free database in your Cloudflare account.
+
+> **How to use slash commands in Discord.** Type `/` and the start of the
+> command, for example `/config`, then **pick it from the pop-up list**.
+> Discord then shows a box for each option: click a box and fill it in or
+> pick from its list. Press Enter to send. Don't type the whole line yourself:
+> if there's no pop-up, Discord just sends your text as a normal message,
+> which the bot can't see. In this guide, `/config channel channel:#tournament`
+> is shorthand for "pick `/config channel`, then pick #tournament in the
+> `channel` box".
 
 ---
+
+# Part 1: Setup
 
 ## 1. Install the tools and create a Cloudflare account
 
@@ -29,15 +46,13 @@ type or paste them and press Enter.
    ```
    git clone https://github.com/endymion99-glitch/yugioh-app.git
    ```
-   The bot is being built on its own branch, which is a separate line of
-   work, until it gets merged into `main`. Switch to it from inside the
-   `yugioh-app` folder:
+   Until the bot is merged into the `main` branch, it lives on its own
+   branch. Switch to it from inside the `yugioh-app` folder:
    ```
    git fetch origin
    git checkout claude/pensive-ptolemy-0jxavb
    ```
-   A `discord-bot` folder should now appear. Later, run `git pull` to get
-   new versions.
+   A `discord-bot` folder should now appear.
 3. Go into the bot's folder and install its tools. `wrangler`, Cloudflare's
    command-line tool, comes with them:
    ```
@@ -75,14 +90,9 @@ database that lives in your Cloudflare account.
    ```
    npx wrangler d1 migrations apply yugioh-tournament --remote
    ```
-   Answer **yes** when asked. You should see `0001_initial.sql` with a ✅.
-   The `--remote` part means "the real database on Cloudflare", not a test
-   copy on your computer.
-4. Deploy again so the bot is connected to the database:
-   ```
-   npm run deploy
-   ```
-   The output should now list a binding called `DB`.
+   Answer **yes** when asked. Each file in the `migrations` folder should be
+   listed with a ✅. The `--remote` part means "the real database on
+   Cloudflare", not a test copy on your computer.
 
 ## 3. Create the Discord application
 
@@ -97,7 +107,8 @@ database that lives in your Cloudflare account.
 4. In the left menu, click **Bot**. Under **Token**, click **Reset Token**,
    confirm, and copy the token into your notepad.
    - The token is a password for your bot. **Never share it or post it in
-     Discord.** If it leaks, click Reset Token again to get a new one.
+     Discord.** If it leaks, click Reset Token again to get a new one (and
+     repeat step 4 below with the new one).
    - Discord only shows the token once. If you lose it, reset it again.
 5. Still on the **Bot** page, leave the three "Privileged Gateway Intents"
    switched **off**. The bot doesn't need them.
@@ -132,7 +143,8 @@ npm run deploy
 ```
 
 If this is your first Worker, wrangler may ask you to pick a
-`workers.dev` subdomain. Any name is fine, for example your username.
+`workers.dev` subdomain. Any name is fine, for example your username. The
+output should list a binding called `DB` (the database from step 2).
 
 When it finishes, it prints a web address like:
 
@@ -203,23 +215,13 @@ the admin role through its own messages, so it doesn't need the broad
    ```
    npm run register
    ```
-   It should print `Registered N command(s): ...` with the list of commands.
-
-**Run `npm run register` again whenever a new version of the bot adds
-commands.**
+   It should print `Registered 14 command(s): /ping, /config, ...`.
 
 ## 9. Test it
 
 In any channel on your server, type `/ping` and pick the command from the
 pop-up. The bot should reply (only you can see the reply) with
 **"Pong! The tournament bot is online."**
-
-If `/ping` doesn't appear at all, run `npm run register` again and restart
-Discord with Ctrl+R (Cmd+R on Mac). If it appears but says "The application
-did not respond", check that the Interactions Endpoint URL from step 6 is
-saved.
-
----
 
 ## 10. Set up the admin role and the tournament channel
 
@@ -234,14 +236,18 @@ saved.
    If the channel is private, add the bot to it: open the channel's
    settings → **Permissions** → **Add members or roles** → pick the bot, and
    allow **View Channel**, **Send Messages** and **Embed Links**.
-3. In any channel, run:
-   ```
-   /config admin-role role:@Tournament Admin
-   /config channel channel:#tournament
-   ```
+3. Run these two commands, one at a time (see "How to use slash commands"
+   at the top):
+   - `/config admin-role role:@Tournament Admin`
+   - `/config channel channel:#tournament`
+
    Only someone with **Manage Server** (or Administrator, or the server
    owner) can run `/config admin-role`. After that, every admin command
    needs the Tournament Admin role.
+
+   `/config channel` posts a short hello in the channel. If it says it
+   couldn't post there, fix the channel permissions from point 2 and run it
+   again.
 
 The bot's replies to admin commands are private: only you see them.
 
@@ -255,63 +261,55 @@ For each of the 8 players, run:
 
 The name is what the bot shows in brackets and standings. After the 8th
 player, the bot says the roster is complete. Check the roster with
-`/player list`.
-
-These 8 players stay active for every future tournament. If you ever need to
-change someone:
-
-- `/player swap old:@Leaving new:@Joining name:NewName` replaces a player.
-  This also works in the middle of a tournament: the new player takes over
-  the matches the old player hasn't played yet. Results already played stay
-  with the old player, and the new player's stats start fresh.
-- `/player remove user:@Someone` removes a player between tournaments. It's
-  refused while they're in a tournament; use swap instead. Their history is
-  kept either way.
-
-## Changing match formats
-
-By default every match is Best of 1, except the Final (1st/2nd), which is
-Best of 3. To change a stage for future tournaments:
-
-```
-/config format stage:3rd/4th Place Match best_of:Best of 3
-```
-
-Add `apply_to_current:True` to also change that stage's matches in the
-current tournament that don't have a result yet.
+`/player list`. These 8 players stay active for every future tournament.
 
 ## 12. Start the first tournament
 
 Your first tournament was already drawn outside the bot, so enter its
 pairings by hand:
 
-1. Type `/tournament` and pick **`/tournament create-manual`**.
+1. Pick **`/tournament create-manual`**.
 2. Fill in the 8 boxes: `m1_p1` and `m1_p2` are the two players of Round 1
-   Match 1, `m2_p1` and `m2_p2` are Match 2, and so on. Each box lets you
-   pick a server member. Pick the players exactly as they were drawn: the
-   bracket depends on which match is which (the Match 1 and Match 2 winners
-   meet in Winners' Semi A, the Match 3 and Match 4 winners in Winners' Semi
-   B).
+   Match 1, `m2_p1` and `m2_p2` are Match 2, and so on. Pick the players
+   exactly as they were drawn: the bracket depends on which match is which
+   (the Match 1 and Match 2 winners meet in Winners' Semi A, the Match 3 and
+   Match 4 winners in Winners' Semi B).
 3. Press Enter. The bot creates **Tournament #1** and posts the pairings in
    the tournament channel. This post is **silent**: the players' names show
    as @mentions, but nobody gets a notification. To notify them, also set
    the optional `ping_players` box to `True`.
 
-### Enter the results that were already played
-
-For each match of Tournament #1 that has already been played, run
+Then, for each match of Tournament #1 that has already been played, run
 **`/result override`**:
 
 - `match`: which match, e.g. *Round 1 · Match 1* or *Winners' Semi A*
 - `winner`: the player who won
 - `score`: only for Best of 3 matches (the Final, by default): *2-0* or *2-1*
 
-Enter them in bracket order: Round 1 first, then the semis, because a semi
-only exists once both of its Round 1 matches have a result. Your replies are
-private, and the "next match is ready" posts that follow are **silent** by
-default (names show as mentions, nobody is notified). Add
-`ping_players:True` if you want the players of the newly ready match to be
-notified.
+Enter them in bracket order (Round 1 first, then the semis), because a semi
+only exists once both of its Round 1 matches have a result. The "next match
+is ready" posts that follow are **silent** by default. Add
+`ping_players:True` to notify the players of the newly ready match.
+
+**That's it: setup is done.** From now on the bot runs by itself.
+
+---
+
+# Part 2: Running tournaments
+
+## The tournament format
+
+8 players, 12 matches, 3 rounds, and every place from 1st to 8th decided:
+
+- **Round 1:** 4 matches (M1 to M4).
+- **Round 2:** Winners' Semi A (winners of M1 and M2), Winners' Semi B
+  (winners of M3 and M4), Losers' Semi A (losers of M1 and M2) and Losers'
+  Semi B (losers of M3 and M4).
+- **Round 3:** the Final for 1st/2nd (the two Winners' Semi winners), and
+  matches for 3rd/4th, 5th/6th and 7th/8th.
+
+A match can be played as soon as both of its earlier matches are confirmed;
+nobody has to wait for the whole round.
 
 ## How players report results
 
@@ -335,13 +333,14 @@ before it's confirmed: the new report replaces the old one.
 | Command | What it shows |
 |---|---|
 | `/mymatch` | Your current match and opponent, and what to do next (private) |
+| `/report` | Report your match result (see above) |
 | `/bracket` | All 12 matches of the current tournament and their status. Add `tournament:<number>` for an older one |
 | `/standings` | The overall leaderboard: points, place counts (🥇×2 …) and tournaments played |
 | `/history` | Finished tournaments with their podium, 10 per page (`page:2` for more). `/history tournament:<number>` opens one in detail |
 | `/stats` | A player's points and rank, tournaments played, best and average place, match and game record, placement counts, and head-to-head against everyone they've played. `/stats player:@someone` for someone else |
 
-These replies are visible to the channel (except `/mymatch`) but never ping
-anyone.
+These replies never ping anyone. All of them are visible to the channel
+except `/mymatch`, which only you can see.
 
 ## When a tournament ends
 
@@ -352,30 +351,28 @@ As soon as the 12th match is confirmed, the bot:
    points earned, rewards (the 10 packs everyone gets plus their placement
    reward, with the total packs), and their overall points and rank, plus
    the results of the four placement matches,
-3. **immediately draws the next tournament** with the reveal and tags
-   everyone. No admin action needed, forever.
+3. **immediately draws the next tournament** with the reveal (about 12
+   seconds, one match at a time) and tags everyone. No admin action needed,
+   forever.
 
 If the next tournament can't start (for example, there aren't exactly 8
 active players), the bot says so in the channel; fix it and run `/draw`.
 
-If all 12 results of a tournament were in before this feature existed,
-just run `/draw`: the bot posts that tournament's summary first and then
-draws the next one.
+## Admin commands
 
-## Points and rewards tables
+| Command | What it does |
+|---|---|
+| `/config admin-role` | Which role counts as Tournament Admin |
+| `/config channel` | Where the bot posts |
+| `/config format` | Best of 1 or 3 for a stage (see below) |
+| `/player add` / `swap` / `remove` / `list` | Manage the roster (see below) |
+| `/draw` | Start a tournament with a random draw, when none is running |
+| `/tournament create-manual` | Start a tournament from pairings you choose |
+| `/result override` | Set or correct any result (see below) |
+| `/points set` | Points for a place |
+| `/rewards set` | Rewards for a place |
 
-Defaults: points 10, 8, 7, 6, 5, 4, 3, 1 for places 1 to 8. Rewards: 10
-packs for everyone, plus 4/3/2/1 cards of their choice for 1st to 4th and
-4/6/8/10 extra packs for 5th to 8th.
-
-- `/points set place:1 points:12` changes the points for a place. Totals are
-  always calculated from the current table, so this updates everyone's
-  totals for all past tournaments too.
-- `/rewards set place:5 extra_packs:5` changes a reward. Leave a box empty to
-  keep its current value. Boxes: `base_packs`, `extra_packs`,
-  `chosen_cards`.
-
-## Correcting results
+### Correcting results
 
 Admins can change any result at any time with `/result override`, also for
 past tournaments (fill in the `tournament` number).
@@ -393,33 +390,82 @@ past tournaments (fill in the `tournament` number).
   `/result override tournament:<number>`. Players can't `/report` in it.
   The Correction is posted once all 12 matches have results again.
 
-### Later tournaments: `/draw`
+### Changing players
 
-When no tournament is running, an admin can start one with **`/draw`**. The
-bot shuffles the 8 players into 4 random pairs and reveals them one match at
-a time in the tournament channel (about 12 seconds), then tags everyone.
-Normally you won't need it: once a tournament finishes, the bot draws the
-next one automatically.
+- `/player swap old:@Leaving new:@Joining name:NewName` replaces a player.
+  This also works in the middle of a tournament: the new player takes over
+  the matches the old player hasn't played yet (and is tagged for any that
+  can be played now). Results already played stay with the old player, and
+  the new player's stats start fresh.
+- `/player remove user:@Someone` removes a player between tournaments. It's
+  refused while they're in a tournament; use swap instead. Their history is
+  kept either way.
 
-- If you run `/draw` in the tournament channel, the reveal appears right
-  there. If you run it anywhere else, the reveal still goes to the tournament
-  channel and you get a private "drawn in #tournament" note.
-- If the bot can't post in the tournament channel (missing permissions), it
-  tells you, and no tournament is created, so you can fix it and try again.
+### Match formats
 
-## Redeploying after changes
-
-Whenever you get a new version of the code (for example with `git pull`):
+By default every match is Best of 1, except the Final (1st/2nd), which is
+Best of 3. To change a stage for future tournaments:
 
 ```
+/config format stage:3rd/4th Place Match best_of:Best of 3
+```
+
+Add `apply_to_current:True` to also change that stage's matches in the
+current tournament that don't have a result yet.
+
+### Points and rewards
+
+Defaults: points 10, 8, 7, 6, 5, 4, 3, 1 for places 1 to 8. Rewards: 10
+packs for everyone, plus 4/3/2/1 cards of their choice for 1st to 4th and
+4/6/8/10 extra packs for 5th to 8th.
+
+- `/points set place:1 points:12` changes the points for a place. Totals are
+  always calculated from the current table, so this updates everyone's
+  totals for all past tournaments too.
+- `/rewards set place:5 extra_packs:5` changes a reward. Leave a box empty to
+  keep its current value. Boxes: `base_packs`, `extra_packs`,
+  `chosen_cards`.
+
+### `/draw`
+
+Normally you won't need it: once a tournament finishes, the bot draws the
+next one automatically. When no tournament is running, `/draw` shuffles the
+8 players into 4 random pairs and reveals them in the tournament channel.
+
+- If you run it anywhere else, the reveal still goes to the tournament
+  channel and you get a private note.
+- If the bot can't post in the tournament channel, it tells you, and no
+  tournament is created, so you can fix it and try again.
+- If the tournament in progress already has all 12 results (for example, it
+  finished while the bot was being updated), `/draw` posts its summary first
+  and then draws the next one.
+
+---
+
+# Part 3: Maintenance
+
+## Updating the bot
+
+Whenever there's a new version of the code, run these in the `discord-bot`
+folder:
+
+```
+git pull
 npm install
 npx wrangler d1 migrations apply yugioh-tournament --remote
 npm run deploy
 npm run register
 ```
 
-The migrations command only does something when a new version adds
-database changes. Otherwise it says there's nothing to apply, which is fine.
+- The migrations command only does something when a new version changes the
+  database. Otherwise it says there's nothing to apply, which is fine.
+- `npm run register` is only needed when commands change, but it never hurts.
+- If `git pull` refuses because of "local changes" to a file you didn't mean
+  to change (often `wrangler.toml`), run `git checkout <that file>` and pull
+  again.
+
+Tournaments, players and results are kept across updates: they're in the
+database, not in the code.
 
 ## Backing up your data
 
@@ -431,4 +477,50 @@ npx wrangler d1 export yugioh-tournament --remote --output backup.sql
 ```
 
 Keep `backup.sql` somewhere safe. It's a plain text file of SQL commands
-that can recreate the data.
+that can recreate the data. Doing this once in a while (say, monthly) is
+plenty.
+
+### Restoring a backup
+
+Only needed if the database is lost or broken. Restore into a **new, empty**
+database:
+
+1. `npx wrangler d1 create yugioh-tournament-restored` and put the new
+   `database_id` and `database_name` into `wrangler.toml` (and use the new
+   name in the commands below).
+2. `npx wrangler d1 execute yugioh-tournament-restored --remote --file backup.sql`
+   (the backup already contains the tables, so don't run the migrations
+   first).
+3. `npm run deploy`.
+
+## Troubleshooting
+
+| Problem | What to do |
+|---|---|
+| A command doesn't appear in the `/` pop-up | Run `npm run register`, then press Ctrl+R (Cmd+R on Mac) in Discord |
+| "The application did not respond" | Check the Interactions Endpoint URL (step 6) is saved and the Worker address opens in a browser. Then look at the logs (below) |
+| "Something went wrong on my side" | Usually the database: run the migrations command from "Updating the bot". Then look at the logs |
+| The bot can't post in the channel | Give the bot View Channel, Send Messages and Embed Links in that channel (step 10), then run `/config channel` again |
+| Admin pings don't notify anyone | Turn on "Allow anyone to @mention this role" for the admin role (step 10) |
+| "Only members with the … role" | Give yourself the Tournament Admin role, or check `/config admin-role` |
+| A draw needs exactly 8 active players | Check `/player list`, then `/player add` or `/player swap` |
+
+### Seeing the bot's logs
+
+To watch what the bot is doing (and any errors) live:
+
+```
+npx wrangler tail
+```
+
+Leave it running, use a command in Discord, and the log lines appear in the
+terminal. Press Ctrl+C to stop. You can also see logs in the Cloudflare
+dashboard: **Workers & Pages** → `yugioh-tournament-bot` → **Logs**.
+
+## Staying free
+
+The bot uses the Cloudflare Workers and D1 free plans. A group of friends
+uses a tiny fraction of their daily limits (100,000 requests and millions of
+database reads per day), and the bot never runs on a timer, so nothing is
+used when nobody is playing. If Cloudflare ever asks you to upgrade, you
+don't need to.

@@ -1,5 +1,6 @@
 import { getConfig, setConfig, setStageFormat } from '../db/config'
 import { getCurrentTournament } from '../db/tournaments'
+import { describeDiscordError, discordApi } from '../discord/api'
 import { mentionChannel, mentionRole } from '../discord/format'
 import { parseCommand } from '../discord/options'
 import { hasRole, isServerManager, requireAdmin, requireGuild } from '../discord/permissions'
@@ -88,7 +89,17 @@ export const config: Command = {
     if (sub === 'channel') {
       const channelId = String(options.channel)
       await setConfig(env.DB, 'channel_id', channelId)
-      return ephemeral(`Done. Tournament posts will go to ${mentionChannel(channelId)}.`)
+      // Post a hello right away, so a missing permission shows up now rather than mid-tournament.
+      try {
+        await discordApi(env).createMessage(channelId, {
+          content: '🎴 Tournament updates will be posted in this channel: draws, results, match announcements and summaries.'
+        })
+      } catch (err) {
+        return ephemeral(
+          `Saved: tournament posts will go to ${mentionChannel(channelId)}. But I couldn't post a test message there: ${describeDiscordError(err)}`
+        )
+      }
+      return ephemeral(`Done. Tournament posts will go to ${mentionChannel(channelId)}. I posted a short hello there.`)
     }
 
     if (sub === 'format') {

@@ -2,6 +2,11 @@
 
 A desktop app for tracking your Yu-Gi-Oh! card collection and building decks during a pack-opening tournament on [YGOprodeck](https://ygoprodeck.com). Each player runs their own copy. Everything stays on your computer; the only network calls go to the free YGOprodeck card database and image CDN.
 
+> **Also in this repository:** [`discord-bot/`](discord-bot/) is a free,
+> always-on Discord bot that runs the group's endless 8-player tournaments
+> (draws, brackets, results, points, standings). It's independent of this
+> desktop app; see [discord-bot/README.md](discord-bot/README.md).
+
 ## Features
 
 - **Profile login.** Create a username and password on first launch. The password is stored as a bcrypt hash in the local database.

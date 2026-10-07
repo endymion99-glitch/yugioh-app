@@ -76,6 +76,11 @@ export const cancelledMessage = (t: Tournament, m: MatchState): MessagePayload =
   components: []
 })
 
+export const swapCancelledMessage = (t: Tournament, m: MatchState): MessagePayload => ({
+  content: `❌ ~~Result report for ${matchTitle(t, m)}~~\nCancelled: a player in this match was replaced, so it has to be played (and reported) again.`,
+  components: []
+})
+
 export const OVERRIDE_PREFIX = 'ovr'
 
 /** The private warning shown before an override that clears later results. */

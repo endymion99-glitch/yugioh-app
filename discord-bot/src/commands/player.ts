@@ -7,7 +7,14 @@ import {
   listPlayers,
   type Player
 } from '../db/players'
-import { getCurrentTournament, insertSubstitutionStatement, loadMatches, matchUpdateStatements } from '../db/tournaments'
+import {
+  getCurrentTournament,
+  insertSubstitutionStatement,
+  loadMatches,
+  matchUpdateStatements,
+  type StoredMatch
+} from '../db/tournaments'
+import { discordApi } from '../discord/api'
 import { escapeMarkdown, mentionUser } from '../discord/format'
 import { parseCommand, resolvedUser } from '../discord/options'
 import { requireAdmin, requireGuild } from '../discord/permissions'
@@ -16,6 +23,7 @@ import { OptionType, type Interaction } from '../discord/types'
 import { SLOTS, TOURNAMENT_SIZE, swapPlayer, type Slot } from '../logic/bracket'
 import { TournamentError } from '../logic/errors'
 import { announceMatches } from '../services/announce'
+import { swapCancelledMessage } from '../views/results'
 import type { Command, CommandContext } from './registry'
 
 const NAME_MAX = 32
@@ -99,6 +107,7 @@ async function swap(c: CommandContext, oldUserId: string, newUserId: string, raw
   const statements = [deactivatePlayerStatement(db, old.id)]
   let tournamentNote = ''
   let toAnnounce: Slot[] = []
+  let droppedClaims: StoredMatch[] = []
   const current = await getCurrentTournament(db)
   if (current) {
     const before = await loadMatches(db, current.id)
@@ -107,6 +116,10 @@ async function swap(c: CommandContext, oldUserId: string, newUserId: string, raw
       statements.push(...matchUpdateStatements(db, before, after), insertSubstitutionStatement(db, current.id, old.id, newId))
       const takenOver = after.filter((m) => m.status !== 'confirmed' && (m.player1 === newId || m.player2 === newId))
       toAnnounce = takenOver.filter((m) => m.status === 'ready').map((m) => m.slot)
+      // Reports the old player was part of no longer count: the replacement has to play.
+      droppedClaims = before.filter(
+        (m) => m.messageId && (m.status === 'pending' || m.status === 'disputed') && takenOver.some((t) => t.slot === m.slot)
+      )
       tournamentNote = takenOver.length
         ? `\nIn Tournament #${current.number} they take over: ${takenOver.map((m) => SLOTS[m.slot].name).join(', ')}.`
         : `\nThey take ${escapeMarkdown(old.name)}'s place in Tournament #${current.number} for any matches still to come.`
@@ -118,9 +131,19 @@ async function swap(c: CommandContext, oldUserId: string, newUserId: string, raw
     await db.prepare('DELETE FROM players WHERE id = ?').bind(newId).run()
     throw err
   }
-  // Let the replacement and their opponent know about a match they can play now.
-  if (current && toAnnounce.length) {
-    ctx.waitUntil(announceMatches(env, current, toAnnounce).catch((err) => console.error('Announcing swap failed', err)))
+  if (current && (toAnnounce.length || droppedClaims.length)) {
+    ctx.waitUntil(
+      (async () => {
+        const channelId = await getConfig(db, 'channel_id')
+        if (channelId) {
+          for (const m of droppedClaims) {
+            await discordApi(env).editMessage(channelId, m.messageId!, swapCancelledMessage(current, m)).catch(() => {})
+          }
+        }
+        // Let the replacement and their opponent know about a match they can play now.
+        await announceMatches(env, current, toAnnounce)
+      })().catch((err) => console.error('Swap follow-up failed', err))
+    )
   }
   return ephemeral(
     `${playerLabel(newPlayer)} replaced ${playerLabel(old)}. ${escapeMarkdown(old.name)}'s results and stats are kept on their own record.${tournamentNote}`
