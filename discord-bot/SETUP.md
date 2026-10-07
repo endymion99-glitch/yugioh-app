@@ -67,12 +67,10 @@ database that lives in your Cloudflare account.
    - If wrangler asks *"Would you like Wrangler to add it on your behalf?"*,
      answer **No**. The project's settings file already has a place for it.
 2. Open `wrangler.toml` (in the `discord-bot` folder) in a text editor. Find
-   this line near the bottom:
-   ```
-   database_id = "PASTE-YOUR-DATABASE-ID-HERE"
-   ```
-   Replace `PASTE-YOUR-DATABASE-ID-HERE` with your ID, keep the quotes, and
-   save the file.
+   the `database_id = "..."` line near the bottom, replace the ID between
+   the quotes with yours, and save the file.
+   (This project's own database ID is already filled in. You only need to
+   change it if you're setting up a separate copy of the bot.)
 3. Create the tables inside the database:
    ```
    npx wrangler d1 migrations apply yugioh-tournament --remote
