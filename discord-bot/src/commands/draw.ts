@@ -1,10 +1,13 @@
 import { getConfig } from '../db/config'
+import { getCurrentTournament, loadMatches } from '../db/tournaments'
 import { describeDiscordError, discordApi } from '../discord/api'
 import { mentionChannel } from '../discord/format'
 import { requireAdmin, requireGuild } from '../discord/permissions'
-import { deferred } from '../discord/responses'
+import { deferred, ephemeral } from '../discord/responses'
+import { isComplete } from '../logic/bracket'
 import { TournamentError } from '../logic/errors'
 import { channelTarget, interactionTarget, playReveal, startRandomTournament } from '../services/draw'
+import { onTournamentComplete } from '../services/finish'
 import { deleteUnplayedTournament } from '../services/tournaments'
 import type { Command } from './registry'
 
@@ -19,6 +22,16 @@ export const draw: Command = {
     requireAdmin(interaction, await getConfig(env.DB, 'admin_role_id'))
     const channelId = await getConfig(env.DB, 'channel_id')
     if (!channelId) throw new TournamentError('Set the tournament channel first with `/config channel`.')
+
+    // A tournament whose 12 results were all in before finishing existed (or
+    // whose finish was interrupted): finish it now, which also draws the next one.
+    const current = await getCurrentTournament(env.DB)
+    if (current && isComplete(await loadMatches(env.DB, current.id))) {
+      ctx.waitUntil(onTournamentComplete(env, current).catch((err) => console.error('Finishing tournament failed', err)))
+      return ephemeral(
+        `Tournament #${current.number} already has all 12 results. I'm posting its summary in ${mentionChannel(channelId)}, then the next tournament is drawn there automatically.`
+      )
+    }
 
     const drawn = await startRandomTournament(env.DB)
     const api = discordApi(env)

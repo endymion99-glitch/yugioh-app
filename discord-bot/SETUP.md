@@ -330,6 +330,38 @@ notified.
 If a player reports by mistake, either player can simply `/report` again
 before it's confirmed: the new report replaces the old one.
 
+## When a tournament ends
+
+As soon as the 12th match is confirmed, the bot:
+
+1. works out places 1st to 8th and awards the points,
+2. posts the **summary** in the tournament channel: every player's place,
+   points earned, rewards (the 10 packs everyone gets plus their placement
+   reward, with the total packs), and their overall points and rank, plus
+   the results of the four placement matches,
+3. **immediately draws the next tournament** with the reveal and tags
+   everyone. No admin action needed, forever.
+
+If the next tournament can't start (for example, there aren't exactly 8
+active players), the bot says so in the channel; fix it and run `/draw`.
+
+If all 12 results of a tournament were in before this feature existed,
+just run `/draw`: the bot posts that tournament's summary first and then
+draws the next one.
+
+## Points and rewards tables
+
+Defaults: points 10, 8, 7, 6, 5, 4, 3, 1 for places 1 to 8. Rewards: 10
+packs for everyone, plus 4/3/2/1 cards of their choice for 1st to 4th and
+4/6/8/10 extra packs for 5th to 8th.
+
+- `/points set place:1 points:12` changes the points for a place. Totals are
+  always calculated from the current table, so this updates everyone's
+  totals for all past tournaments too.
+- `/rewards set place:5 extra_packs:5` changes a reward. Leave a box empty to
+  keep its current value. Boxes: `base_packs`, `extra_packs`,
+  `chosen_cards`.
+
 ## Correcting results
 
 Admins can change any result at any time with `/result override`, also for
@@ -341,9 +373,12 @@ past tournaments (fill in the `tournament` number).
   that already have results, the bot first shows how many matches will be
   reset (and which) with **Apply** and **Cancel** buttons. Applying clears
   those matches so they can be played, or entered, again.
-- Correcting an earlier, finished tournament that way reopens it for admins:
-  enter the cleared matches with `/result override tournament:<number>`.
-  Players can't `/report` in it, and no new tournament is drawn because of it.
+- Correcting a finished tournament posts a **Correction** message with its
+  updated summary (and updated totals). No new tournament is drawn.
+- If the correction clears later matches, the tournament is reopened for
+  admins: enter the cleared matches with
+  `/result override tournament:<number>`. Players can't `/report` in it.
+  The Correction is posted once all 12 matches have results again.
 
 ### Later tournaments: `/draw`
 

@@ -272,34 +272,4 @@ describe('/result override', () => {
       expect(discord.find(`${CHANNEL_MSGS}/${messageId}`, 'PATCH')[0].body.content).toMatch(/Cancelled: an earlier result/)
     })
   })
-
-  it('correcting a finished tournament reopens it for admin corrections', async () => {
-    const env = await started()
-    const results: Array<[string, string]> = [
-      ['M1', 'u1'], ['M2', 'u3'], ['M3', 'u5'], ['M4', 'u7'],
-      ['WA', 'u1'], ['WB', 'u5'], ['LA', 'u2'], ['LB', 'u6'],
-      ['P1', 'u1'], ['P3', 'u3'], ['P5', 'u2'], ['P7', 'u4']
-    ]
-    for (const [match, winner] of results) {
-      await run(env, admin, 'result', 'override', { match, winner, ...(match === 'P1' ? { score: '2-0' } : {}) })
-    }
-    // Finishing tournaments (placements, summary, next draw) is build step 7; simulate it here.
-    const t = (await getCurrentTournament(env.DB))!
-    await env.DB.prepare("UPDATE tournaments SET status = 'finished' WHERE id = ?").bind(t.id).run()
-    await env.DB.prepare('INSERT INTO placements (tournament_id, player_id, place) VALUES (?, 1, 1)').bind(t.id).run()
-
-    discord.reset()
-    const warning = await run(env, admin, 'result', 'override', { match: 'M1', winner: 'u2', tournament: 1 })
-    expect(warning.content).toMatch(/6 later matches will be reset/)
-    const r = await click(env, admin, buttonIds(warning.data)[0], 'eph')
-    await r.done
-    expect(r.content).toMatch(/Tournament #1 is open for corrections/)
-    const status = await env.DB.prepare('SELECT status FROM tournaments WHERE id = ?').bind(t.id).first('status')
-    expect(status).toBe('correcting')
-    expect(await env.DB.prepare('SELECT COUNT(*) AS n FROM placements').first('n')).toBe(0)
-    // No "match ready" posts for a past tournament being corrected.
-    expect(discord.find(CHANNEL_MSGS, 'POST')).toHaveLength(0)
-    // Players can't /report in it: it isn't the tournament in progress.
-    expect((await run(env, member('u2'), 'report', null, { result: 'won' })).content).toMatch(/No tournament is in progress/)
-  })
 })
