@@ -24,12 +24,20 @@ type or paste them and press Enter.
    node --version
    ```
    It should print something like `v22.x.x` or higher.
-2. Get this project's code onto your computer. If you already cloned the
-   `yugioh-app` repository for the desktop app, run `git pull` inside it.
-   Otherwise install Git from <https://git-scm.com> and run:
+2. Get this project's code onto your computer. If you don't have the
+   `yugioh-app` repository yet, install Git from <https://git-scm.com> and run:
    ```
    git clone https://github.com/endymion99-glitch/yugioh-app.git
    ```
+   The bot is being built on its own branch, which is a separate line of
+   work, until it gets merged into `main`. Switch to it from inside the
+   `yugioh-app` folder:
+   ```
+   git fetch origin
+   git checkout claude/pensive-ptolemy-0jxavb
+   ```
+   A `discord-bot` folder should now appear. Later, run `git pull` to get
+   new versions.
 3. Go into the bot's folder and install its tools. `wrangler`, Cloudflare's
    command-line tool, comes with them:
    ```
