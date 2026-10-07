@@ -19,6 +19,9 @@ npm run register   # register slash commands with your Discord server
 src/
   index.ts         Worker entry: signature check, interaction routing
   discord/         Discord-specific helpers (verification, types, replies)
+  logic/           Pure tournament rules, no Discord or database code:
+                   bracket.ts (12-match bracket, results, recalculation),
+                   draw.ts (random pairs), points.ts (points, rewards, standings)
   commands/        One file per slash command
 migrations/        D1 database schema (SQL), applied in order
 scripts/
