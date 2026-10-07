@@ -55,7 +55,36 @@ type or paste them and press Enter.
 
 ## 2. Create the database
 
-*(This step will be added in build step 2. Skip it for now.)*
+The bot stores players, tournaments and results in **Cloudflare D1**, a free
+database that lives in your Cloudflare account.
+
+1. Create the database:
+   ```
+   npx wrangler d1 create yugioh-tournament
+   ```
+   It prints a few lines including `database_id = "..."`, a long ID that
+   looks like `1a2b3c4d-....`. Copy that ID.
+   - If wrangler asks *"Would you like Wrangler to add it on your behalf?"*,
+     answer **No**. The project's settings file already has a place for it.
+2. Open `wrangler.toml` (in the `discord-bot` folder) in a text editor. Find
+   this line near the bottom:
+   ```
+   database_id = "PASTE-YOUR-DATABASE-ID-HERE"
+   ```
+   Replace `PASTE-YOUR-DATABASE-ID-HERE` with your ID, keep the quotes, and
+   save the file.
+3. Create the tables inside the database:
+   ```
+   npx wrangler d1 migrations apply yugioh-tournament --remote
+   ```
+   Answer **yes** when asked. You should see `0001_initial.sql` with a ✅.
+   The `--remote` part means "the real database on Cloudflare", not a test
+   copy on your computer.
+4. Deploy again so the bot is connected to the database:
+   ```
+   npm run deploy
+   ```
+   The output should now list a binding called `DB`.
 
 ## 3. Create the Discord application
 
@@ -203,6 +232,22 @@ Whenever you get a new version of the code (for example with `git pull`):
 
 ```
 npm install
+npx wrangler d1 migrations apply yugioh-tournament --remote
 npm run deploy
 npm run register
 ```
+
+The migrations command only does something when a new version adds
+database changes. Otherwise it says there's nothing to apply, which is fine.
+
+## Backing up your data
+
+To save a copy of everything in the database (players, all tournaments and
+results) to a file on your computer:
+
+```
+npx wrangler d1 export yugioh-tournament --remote --output backup.sql
+```
+
+Keep `backup.sql` somewhere safe. It's a plain text file of SQL commands
+that can recreate the data.

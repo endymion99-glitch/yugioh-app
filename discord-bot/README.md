@@ -20,7 +20,8 @@ src/
   index.ts         Worker entry: signature check, interaction routing
   discord/         Discord-specific helpers (verification, types, replies)
   commands/        One file per slash command
+migrations/        D1 database schema (SQL), applied in order
 scripts/
   register-commands.ts
-test/
+test/              Tests; test/helpers/d1.ts runs the migrations on in-memory SQLite
 ```

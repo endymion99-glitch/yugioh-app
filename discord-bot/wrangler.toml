@@ -5,3 +5,11 @@ compatibility_date = "2026-09-01"
 
 # Secrets (DISCORD_PUBLIC_KEY, DISCORD_APPLICATION_ID, DISCORD_BOT_TOKEN) are
 # NOT stored here. Set them with `npx wrangler secret put <NAME>`.
+
+# The D1 database (see SETUP.md step 2). Replace database_id with the ID
+# printed by `npx wrangler d1 create yugioh-tournament`.
+[[d1_databases]]
+binding = "DB"
+database_name = "yugioh-tournament"
+database_id = "PASTE-YOUR-DATABASE-ID-HERE"
+migrations_dir = "migrations"

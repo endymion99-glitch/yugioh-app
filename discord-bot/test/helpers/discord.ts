@@ -1,6 +1,7 @@
 // Test helpers that act like Discord: they sign requests with a throwaway
 // Ed25519 key so the Worker's signature check can be exercised for real.
 import type { Env } from '../../src/env'
+import { createTestDb } from './d1'
 
 const toHex = (buf: ArrayBuffer) => Buffer.from(buf).toString('hex')
 
@@ -28,6 +29,7 @@ export async function makeSigner() {
 
 export function makeEnv(publicKey: string): Env {
   return {
+    DB: createTestDb(),
     DISCORD_PUBLIC_KEY: publicKey,
     DISCORD_APPLICATION_ID: 'app-id',
     DISCORD_BOT_TOKEN: 'bot-token'
