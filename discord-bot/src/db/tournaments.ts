@@ -123,3 +123,23 @@ export const insertSubstitutionStatement = (db: D1Database, tournamentId: number
   db
     .prepare('INSERT INTO substitutions (tournament_id, old_player_id, new_player_id) VALUES (?, ?, ?)')
     .bind(tournamentId, oldId, newId)
+
+export async function getTournamentById(db: D1Database, id: number): Promise<Tournament | null> {
+  return db.prepare('SELECT * FROM tournaments WHERE id = ?').bind(id).first<Tournament>()
+}
+
+export async function getTournamentByNumber(db: D1Database, number: number): Promise<Tournament | null> {
+  return db.prepare('SELECT * FROM tournaments WHERE number = ?').bind(number).first<Tournament>()
+}
+
+export async function getMatchById(db: D1Database, id: number): Promise<StoredMatch | null> {
+  const row = await db.prepare('SELECT * FROM matches WHERE id = ?').bind(id).first<MatchRow>()
+  return row ? fromRow(row) : null
+}
+
+/** Records who reported a match and which message holds its Confirm/Dispute buttons. */
+export const setClaimInfoStatement = (db: D1Database, matchId: number, reportedBy: PlayerId | null, messageId: string | null) =>
+  db.prepare('UPDATE matches SET reported_by = ?, message_id = ? WHERE id = ?').bind(reportedBy, messageId, matchId)
+
+export const setTournamentStatusStatement = (db: D1Database, tournamentId: number, status: Tournament['status']) =>
+  db.prepare('UPDATE tournaments SET status = ? WHERE id = ?').bind(status, tournamentId)

@@ -27,3 +27,8 @@ export function ephemeral(message: MessagePayload | string): Response {
 export function deferred(opts: { ephemeral?: boolean } = {}): Response {
   return json({ type: ResponseType.DEFERRED_CHANNEL_MESSAGE, data: opts.ephemeral ? { flags: MessageFlags.EPHEMERAL } : {} })
 }
+
+/** Replaces the message a button was clicked on. */
+export function updateMessage(payload: MessagePayload): Response {
+  return json({ type: ResponseType.UPDATE_MESSAGE, data: { allowed_mentions: NO_MENTIONS, ...payload } })
+}

@@ -87,3 +87,19 @@ export interface MessagePayload {
   flags?: number
   allowed_mentions?: AllowedMentions
 }
+
+export const ComponentType = {
+  ACTION_ROW: 1,
+  BUTTON: 2
+} as const
+
+export const ButtonStyle = {
+  PRIMARY: 1,
+  SECONDARY: 2,
+  SUCCESS: 3,
+  DANGER: 4
+} as const
+
+export function buttonRow(...buttons: Array<{ label: string; custom_id: string; style: number }>) {
+  return { type: ComponentType.ACTION_ROW, components: buttons.map((b) => ({ type: ComponentType.BUTTON, ...b })) }
+}

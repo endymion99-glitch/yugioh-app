@@ -98,3 +98,38 @@ export const TOURNAMENT_CHANNEL = 'tournament-channel'
 export async function addEightPlayers(env: Env) {
   for (let i = 1; i <= 8; i++) await run(env, admin, 'player', 'add', { user: `u${i}`, name: `P${i}` })
 }
+
+/** Clicks a button (custom_id) on message `messageId` as `actor`. */
+export async function click(env: Env, actor: Actor, customId: string, messageId: string): Promise<Reply> {
+  const interaction = {
+    id: 'i',
+    application_id: 'app-id',
+    type: InteractionType.MESSAGE_COMPONENT,
+    token: 'tok',
+    guild_id: GUILD,
+    channel_id: TOURNAMENT_CHANNEL,
+    member: { user: { id: actor.id, username: actor.id }, roles: actor.roles ?? [], permissions: actor.permissions ?? '0' },
+    message: { id: messageId, channel_id: TOURNAMENT_CHANNEL },
+    data: { custom_id: customId, component_type: 2 }
+  }
+  const ctx = makeCtx()
+  const res = await handleInteraction(interaction, env, ctx)
+  const body = (await res.json()) as any
+  return {
+    done: Promise.all(ctx.pending),
+    type: body.type,
+    content: body.data?.content ?? '',
+    ephemeral: Boolean((body.data?.flags ?? 0) & MessageFlags.EPHEMERAL),
+    data: body.data
+  }
+}
+
+/** The custom_ids of the buttons in a message payload. */
+export const buttonIds = (payload: any): string[] =>
+  (payload?.components ?? []).flatMap((row: any) => row.components.map((b: any) => b.custom_id))
+
+/** Players u1..u8 with Round 1 as u1 v u2, u3 v u4, u5 v u6, u7 v u8. */
+export const MANUAL_SEATS = {
+  m1_p1: 'u1', m1_p2: 'u2', m2_p1: 'u3', m2_p2: 'u4',
+  m3_p1: 'u5', m3_p2: 'u6', m4_p1: 'u7', m4_p2: 'u8'
+}

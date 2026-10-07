@@ -4,6 +4,8 @@ import { config } from './config'
 import { draw } from './draw'
 import { ping } from './ping'
 import { player } from './player'
+import { report } from './report'
+import { result } from './result'
 import { tournament } from './tournament'
 
 export interface CommandContext {
@@ -22,7 +24,7 @@ export interface Command {
   handle(c: CommandContext): Promise<Response> | Response
 }
 
-export const commands: Command[] = [ping, config, player, draw, tournament]
+export const commands: Command[] = [ping, config, player, draw, tournament, report, result]
 
 export function findCommand(name: string | undefined): Command | undefined {
   return commands.find((c) => c.definition.name === name)

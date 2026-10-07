@@ -23,6 +23,7 @@ src/
                    bracket.ts (12-match bracket, results, recalculation),
                    draw.ts (random pairs), points.ts (points, rewards, standings)
   commands/        One file per slash command
+  components/      Button handlers (Confirm/Dispute, Apply/Cancel)
   db/              Database queries (D1)
   services/        Steps that combine database and Discord (draw, announcements)
   views/           What the bot's messages look like

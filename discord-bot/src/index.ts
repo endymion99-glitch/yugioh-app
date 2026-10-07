@@ -1,4 +1,5 @@
 import { findCommand } from './commands/registry'
+import { findButtonHandler } from './components/registry'
 import { ephemeral, json } from './discord/responses'
 import { InteractionType, ResponseType, type Interaction } from './discord/types'
 import { verifyDiscordSignature } from './discord/verify'
@@ -21,6 +22,17 @@ export async function handleInteraction(
         return await command.handle({ interaction, env, ctx })
       } catch (err) {
         // Expected problems (not in this match, not an admin...) are shown to the user as-is.
+        if (err instanceof TournamentError) return ephemeral(err.message)
+        throw err
+      }
+    }
+
+    case InteractionType.MESSAGE_COMPONENT: {
+      const found = findButtonHandler(interaction.data?.custom_id)
+      if (!found) return ephemeral('This button is no longer active.')
+      try {
+        return await found.handler.handle({ interaction, env, ctx }, found.parts)
+      } catch (err) {
         if (err instanceof TournamentError) return ephemeral(err.message)
         throw err
       }

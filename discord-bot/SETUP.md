@@ -297,8 +297,53 @@ pairings by hand:
    as @mentions, but nobody gets a notification. To notify them, also set
    the optional `ping_players` box to `True`.
 
-*Entering results for matches that were already played (`/result override`)
-comes in the next build step.*
+### Enter the results that were already played
+
+For each match of Tournament #1 that has already been played, run
+**`/result override`**:
+
+- `match`: which match, e.g. *Round 1 · Match 1* or *Winners' Semi A*
+- `winner`: the player who won
+- `score`: only for Best of 3 matches (the Final, by default): *2-0* or *2-1*
+
+Enter them in bracket order: Round 1 first, then the semis, because a semi
+only exists once both of its Round 1 matches have a result. Your replies are
+private, and the "next match is ready" posts that follow are **silent** by
+default (names show as mentions, nobody is notified). Add
+`ping_players:True` if you want the players of the newly ready match to be
+notified.
+
+## How players report results
+
+1. After playing, either player runs **`/report`**: `result` is *I won* or
+   *I lost*, and `score` is only needed for Best of 3 (*2-0* or *2-1*). The
+   bot finds their current match by itself.
+2. The bot posts the claimed result in the tournament channel with
+   **Confirm** and **Dispute** buttons and pings the opponent. Only the
+   opponent (or an admin) can press them.
+3. **Confirm** makes it final. As soon as both matches feeding a later match
+   are confirmed, the bot posts "A new match is ready!" and tags both
+   players.
+4. **Dispute** pings the Tournament Admin role. An admin settles it with
+   `/result override`; the report message then shows "Settled by an admin".
+
+If a player reports by mistake, either player can simply `/report` again
+before it's confirmed: the new report replaces the old one.
+
+## Correcting results
+
+Admins can change any result at any time with `/result override`, also for
+past tournaments (fill in the `tournament` number).
+
+- Changing only the score, or the winner of a placement match, applies
+  straight away.
+- If the change means different players should have played later matches
+  that already have results, the bot first shows how many matches will be
+  reset (and which) with **Apply** and **Cancel** buttons. Applying clears
+  those matches so they can be played, or entered, again.
+- Correcting an earlier, finished tournament that way reopens it for admins:
+  enter the cleared matches with `/result override tournament:<number>`.
+  Players can't `/report` in it, and no new tournament is drawn because of it.
 
 ### Later tournaments: `/draw`
 
